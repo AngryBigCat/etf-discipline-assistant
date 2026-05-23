@@ -154,7 +154,7 @@ streamlit run app.py
 - 是否启用
 - 是否参与策略信号
 
-可选环境变量在 `.env`：
+可选环境变量在 `.env`（可复制 `.env.example` 后修改，**不要提交 `.env` 到 Git**）：
 
 - `DATABASE_PATH`
 - `PRICE_DATA_SOURCE=auto|akshare|mock`
@@ -162,7 +162,32 @@ streamlit run app.py
 - `LLM_API_KEY`
 - `LLM_API_BASE`
 - `LLM_MODEL`
-- `LLM_TIMEOUT`
+- `LLM_TIMEOUT`（默认 60 秒）
+
+## 对接 DeepSeek 官方 API 测试
+
+AI 复盘默认使用 `mock` 模式，**不需要 API Key**，离线可跑 pytest 与 Streamlit。
+
+若要接入 DeepSeek 官方 API 做真实复盘测试：
+
+1. 复制 `.env.example` 为 `.env`（`.gitignore` 已忽略 `.env`，请勿提交密钥）
+2. 在 `.env` 中设置：
+
+```bash
+LLM_PROVIDER=openai_compatible
+LLM_API_BASE=https://api.deepseek.com
+LLM_API_KEY=your_deepseek_api_key
+LLM_MODEL=deepseek-v4-flash
+LLM_TIMEOUT=60
+```
+
+3. 先生成日报/周报，再运行 AI 复盘 CLI 或在 Streamlit「AI复盘」页点击生成
+
+说明：
+
+- 推荐先用 `deepseek-v4-flash` 做联调，成本与延迟较低
+- 若 API 调用失败，系统会 fallback 到 mock，不影响页面与测试
+- AI 复盘**仅用于纪律总结与行为复盘**，不构成投资建议，**不会自动交易**，也不会修改持仓、信号或交易日志
 
 ## 未来蓝图
 
