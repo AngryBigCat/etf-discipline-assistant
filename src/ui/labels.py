@@ -67,6 +67,7 @@ FIELD_LABELS = {
     "action_suggestion": "操作建议",
     "total_position": "ETF 总仓位",
     "cash_position": "现金仓位",
+    "preview": "摘要预览",
 }
 
 ROLE_LABELS = {

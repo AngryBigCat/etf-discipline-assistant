@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 
 import pandas as pd
@@ -12,14 +13,91 @@ from src.reports.daily_report import build_and_save_daily_report
 from src.reports.weekly_report import build_and_save_weekly_report
 from src.ui.labels import rename_columns
 
+_SECTION_HEADER_RE = re.compile(r"^### .+\n+", re.MULTILINE)
+
+
+def _strip_section_headers(text: str | None) -> str:
+    if not text:
+        return "—"
+    cleaned = _SECTION_HEADER_RE.sub("", text).strip()
+    return cleaned or "—"
+
 
 def _preview(text: str | None, max_len: int = 120) -> str:
     if not text:
         return "—"
-    plain = text.replace("\n", " ").strip()
+    plain = _strip_section_headers(text).replace("\n", " ").strip()
     if len(plain) <= max_len:
         return plain
     return plain[:max_len] + "…"
+
+
+def _render_daily_sections(report: dict[str, str | None]) -> None:
+    st.markdown("#### 概况")
+    st.markdown(_strip_section_headers(report.get("summary")))
+    st.markdown("#### 风险提示")
+    st.markdown(_strip_section_headers(report.get("risk_warning")))
+    st.markdown("#### 操作建议")
+    st.markdown(_strip_section_headers(report.get("action_suggestion")))
+
+
+def _render_weekly_sections(report: dict[str, str | None]) -> None:
+    st.markdown("#### 概况")
+    st.markdown(_strip_section_headers(report.get("summary")))
+    st.markdown("#### 纪律统计")
+    st.markdown(_strip_section_headers(report.get("discipline_summary")))
+    st.markdown("#### 风险摘要")
+    st.markdown(_strip_section_headers(report.get("risk_summary")))
+    st.markdown("#### 操作建议")
+    st.markdown(_strip_section_headers(report.get("action_suggestion")))
+
+
+def _render_daily_history(rows: list) -> None:
+    st.markdown("#### 历史日报")
+    preview_df = pd.DataFrame(
+        [
+            {
+                "report_date": row["report_date"],
+                "preview": _preview(row["summary"], max_len=80),
+            }
+            for row in rows
+        ]
+    )
+    st.dataframe(
+        rename_columns(preview_df),
+        use_container_width=True,
+        hide_index=True,
+    )
+    for row in rows:
+        label = f"{row['report_date']} · {_preview(row['summary'], max_len=60)}"
+        with st.expander(label):
+            _render_daily_sections(dict(row))
+
+
+def _render_weekly_history(rows: list) -> None:
+    st.markdown("#### 历史周报")
+    preview_df = pd.DataFrame(
+        [
+            {
+                "week_start": row["week_start"],
+                "week_end": row["week_end"],
+                "preview": _preview(row["summary"], max_len=80),
+            }
+            for row in rows
+        ]
+    )
+    st.dataframe(
+        rename_columns(preview_df),
+        use_container_width=True,
+        hide_index=True,
+    )
+    for row in rows:
+        label = (
+            f"{row['week_start']} ~ {row['week_end']} · "
+            f"{_preview(row['summary'], max_len=50)}"
+        )
+        with st.expander(label):
+            _render_weekly_sections(dict(row))
 
 
 def render() -> None:
@@ -45,33 +123,12 @@ def render() -> None:
 
     latest_daily = st.session_state.get("latest_daily_report")
     if latest_daily:
-        st.markdown("#### 概况")
-        st.markdown(latest_daily.get("summary") or "—")
-        st.markdown("#### 风险提示")
-        st.markdown(latest_daily.get("risk_warning") or "—")
-        st.markdown("#### 操作建议")
-        st.markdown(latest_daily.get("action_suggestion") or "—")
+        _render_daily_sections(latest_daily)
 
     with get_connection() as conn:
         daily_rows = list_daily_reports(conn, limit=30)
     if daily_rows:
-        st.markdown("#### 历史日报")
-        daily_df = pd.DataFrame(
-            [
-                {
-                    "report_date": row["report_date"],
-                    "summary": _preview(row["summary"]),
-                    "risk_warning": _preview(row["risk_warning"]),
-                    "action_suggestion": _preview(row["action_suggestion"]),
-                }
-                for row in daily_rows
-            ]
-        )
-        st.dataframe(
-            rename_columns(daily_df),
-            use_container_width=True,
-            hide_index=True,
-        )
+        _render_daily_history(daily_rows)
     else:
         st.info("暂无历史日报")
 
@@ -102,37 +159,12 @@ def render() -> None:
 
     latest_weekly = st.session_state.get("latest_weekly_report")
     if latest_weekly:
-        st.markdown("#### 概况")
-        st.markdown(latest_weekly.get("summary") or "—")
-        st.markdown("#### 纪律统计")
-        st.markdown(latest_weekly.get("discipline_summary") or "—")
-        st.markdown("#### 风险摘要")
-        st.markdown(latest_weekly.get("risk_summary") or "—")
-        st.markdown("#### 操作建议")
-        st.markdown(latest_weekly.get("action_suggestion") or "—")
+        _render_weekly_sections(latest_weekly)
 
     with get_connection() as conn:
         weekly_rows = list_weekly_reports(conn, limit=20)
     if weekly_rows:
-        st.markdown("#### 历史周报")
-        weekly_df = pd.DataFrame(
-            [
-                {
-                    "week_start": row["week_start"],
-                    "week_end": row["week_end"],
-                    "summary": _preview(row["summary"]),
-                    "discipline_summary": _preview(row["discipline_summary"]),
-                    "risk_summary": _preview(row["risk_summary"]),
-                    "action_suggestion": _preview(row["action_suggestion"]),
-                }
-                for row in weekly_rows
-            ]
-        )
-        st.dataframe(
-            rename_columns(weekly_df),
-            use_container_width=True,
-            hide_index=True,
-        )
+        _render_weekly_history(weekly_rows)
     else:
         st.info("暂无历史周报")
 
