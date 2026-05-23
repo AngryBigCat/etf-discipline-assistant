@@ -23,13 +23,15 @@ from src.tasks.rules import TASK_RECORD_TRADE_LOG, TASK_REVIEW_STRATEGY_SIGNAL, 
 from src.tasks.rules import TASK_STALE_MARKET_DATA, TASK_UPDATE_MARKET_DATA
 from src.tasks.rules import TASK_GENERATE_WEEKLY_REPORT, TASK_EXCEED_MAX_POSITION
 from src.strategy.rule_engine import ACTION_STRONG_BUY
-from src.tasks.service import refresh_tasks_for_date
+from src.tasks.service import refresh_tasks_for_date, split_tasks_for_display, filter_history_tasks
 from src.ui.labels import (
     TASK_TYPE_LABELS,
     localize_task_category,
     localize_task_priority,
+    localize_task_priority_badge,
     localize_task_source_type,
     localize_task_status,
+    localize_task_status_badge,
     localize_task_type,
 )
 
@@ -344,3 +346,46 @@ def test_task_labels_do_not_expose_raw_values():
     for value in ("daily_price", "strategy_signal", "trade_log"):
         localized = localize_task_source_type(value)
         assert localized not in {value, None, ""}
+
+
+def test_task_status_badges():
+    assert "待处理" in str(localize_task_status_badge("pending"))
+    assert "已完成" in str(localize_task_status_badge("done"))
+    assert "已跳过" in str(localize_task_status_badge("skipped"))
+    assert localize_task_status("pending") == "待处理"
+
+
+def test_task_priority_badges():
+    assert "高" in str(localize_task_priority_badge("high"))
+    assert "中" in str(localize_task_priority_badge("normal"))
+    assert "低" in str(localize_task_priority_badge("low"))
+    assert localize_task_priority("high") == "高"
+
+
+def test_split_tasks_for_display():
+    tasks = [
+        {"id": 1, "status": "pending", "category": "daily", "priority": "normal"},
+        {"id": 2, "status": "done", "category": "daily", "priority": "normal"},
+        {"id": 3, "status": "skipped", "category": "risk", "priority": "high"},
+        {"id": 4, "status": "pending", "category": "risk", "priority": "high"},
+        {"id": 5, "status": "skipped", "category": "daily", "priority": "low"},
+    ]
+    split = split_tasks_for_display(tasks)
+    assert [task["id"] for task in split["today_tasks"]] == [1]
+    assert [task["id"] for task in split["risk_tasks"]] == [4]
+    for task in split["today_tasks"] + split["risk_tasks"]:
+        assert task["status"] == "pending"
+    assert all(task["status"] in {"done", "skipped"} for task in tasks if task["id"] in {2, 3, 5})
+
+
+def test_filter_history_tasks_excludes_pending():
+    rows = [
+        {"id": 1, "status": "pending", "title": "pending task"},
+        {"id": 2, "status": "done", "title": "done task"},
+        {"id": 3, "status": "skipped", "title": "skipped task"},
+    ]
+    history = filter_history_tasks(rows, status="all")
+    assert len(history) == 2
+    assert all(row["status"] != "pending" for row in history)
+    assert [row["id"] for row in filter_history_tasks(rows, status="done")] == [2]
+    assert [row["id"] for row in filter_history_tasks(rows, status="skipped")] == [3]

@@ -98,3 +98,27 @@ def execute_task(conn, settings: dict[str, Any], task_id: int) -> TaskActionResu
 
 def get_recent_task_history(conn, limit: int = 100) -> list[dict[str, Any]]:
     return [dict(row) for row in list_recent_tasks(conn, limit=limit)]
+
+
+def split_tasks_for_display(tasks: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    pending_tasks = [task for task in tasks if task.get("status") == "pending"]
+    today_tasks = [task for task in pending_tasks if task.get("category") != "risk"]
+    risk_tasks = [task for task in pending_tasks if task.get("category") == "risk"]
+    risk_tasks.sort(
+        key=lambda item: (0 if item.get("priority") == "high" else 1, item.get("id") or 0)
+    )
+    return {
+        "pending_tasks": pending_tasks,
+        "today_tasks": today_tasks,
+        "risk_tasks": risk_tasks,
+    }
+
+
+def filter_history_tasks(
+    rows: list[dict[str, Any]],
+    status: str = "all",
+) -> list[dict[str, Any]]:
+    history = [row for row in rows if row.get("status") != "pending"]
+    if status != "all":
+        history = [row for row in history if row.get("status") == status]
+    return history

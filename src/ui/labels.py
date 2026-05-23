@@ -225,10 +225,22 @@ TASK_PRIORITY_LABELS = {
     "low": "低",
 }
 
+TASK_PRIORITY_BADGES = {
+    "high": "🔴 高",
+    "normal": "🔵 中",
+    "low": "⚪ 低",
+}
+
 TASK_STATUS_LABELS = {
     "pending": "待处理",
     "done": "已完成",
     "skipped": "已跳过",
+}
+
+TASK_STATUS_BADGES = {
+    "pending": "🟡 待处理",
+    "done": "🟢 已完成",
+    "skipped": "⚪ 已跳过",
 }
 
 TASK_TYPE_LABELS = {
@@ -347,8 +359,20 @@ def localize_task_priority(value: object) -> object:
     return TASK_PRIORITY_LABELS.get(value, value)
 
 
+def localize_task_priority_badge(value: object) -> object:
+    if isinstance(value, str):
+        return TASK_PRIORITY_BADGES.get(value, localize_task_priority(value))
+    return value
+
+
 def localize_task_status(value: object) -> object:
     return TASK_STATUS_LABELS.get(value, value)
+
+
+def localize_task_status_badge(value: object) -> object:
+    if isinstance(value, str):
+        return TASK_STATUS_BADGES.get(value, localize_task_status(value))
+    return value
 
 
 def localize_task_type(value: object) -> object:
