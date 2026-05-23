@@ -884,6 +884,35 @@ def get_backtest_equity_curve(conn: sqlite3.Connection, run_id: int) -> list[sql
     return cur.fetchall()
 
 
+def save_backtest_positions(conn: sqlite3.Connection, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        return
+    conn.executemany(
+        """
+        INSERT INTO backtest_position (
+            run_id, symbol, quantity, average_cost, last_price,
+            market_value, weight, target_weight, deviation
+        ) VALUES (
+            :run_id, :symbol, :quantity, :average_cost, :last_price,
+            :market_value, :weight, :target_weight, :deviation
+        )
+        """,
+        rows,
+    )
+
+
+def get_backtest_positions(conn: sqlite3.Connection, run_id: int) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM backtest_position
+        WHERE run_id = ?
+        ORDER BY symbol
+        """,
+        (run_id,),
+    )
+    return cur.fetchall()
+
+
 def list_backtest_runs(conn: sqlite3.Connection, limit: int = 20) -> list[sqlite3.Row]:
     cur = conn.execute(
         """

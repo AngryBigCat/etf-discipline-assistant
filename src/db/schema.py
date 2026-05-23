@@ -250,12 +250,29 @@ SCHEMA_STATEMENTS: list[str] = [
         FOREIGN KEY(run_id) REFERENCES backtest_run(id)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS backtest_position (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER NOT NULL,
+        symbol TEXT NOT NULL,
+        quantity REAL,
+        average_cost REAL,
+        last_price REAL,
+        market_value REAL,
+        weight REAL,
+        target_weight REAL,
+        deviation REAL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(run_id) REFERENCES backtest_run(id)
+    )
+    """,
     "CREATE INDEX IF NOT EXISTS idx_daily_price_symbol_date ON daily_price(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_indicator_daily_symbol_date ON indicator_daily(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_trade_log_trade_date ON trade_log(trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_backtest_run_created_at ON backtest_run(created_at)",
     "CREATE INDEX IF NOT EXISTS idx_backtest_trade_run_id ON backtest_trade(run_id)",
     "CREATE INDEX IF NOT EXISTS idx_backtest_equity_run_date ON backtest_equity_curve(run_id, trade_date)",
+    "CREATE INDEX IF NOT EXISTS idx_backtest_position_run_id ON backtest_position(run_id)",
 ]
 
 

@@ -7,7 +7,13 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.backtest.models import BacktestConfig
-from src.backtest.service import load_backtest_detail, run_and_save_backtest, run_backtest_comparison
+from src.backtest.portfolio import PortfolioAssetConfig, PortfolioBacktestConfig
+from src.backtest.service import (
+    load_backtest_detail,
+    run_and_save_backtest,
+    run_and_save_portfolio_backtest,
+    run_backtest_comparison,
+)
 from src.config.settings import get_enabled_portfolio_assets, load_settings
 from src.db.connection import db_session, get_connection
 from src.db.repository import list_backtest_run_summaries
@@ -32,6 +38,20 @@ FREQUENCY_OPTIONS = {
 MODE_OPTIONS = {
     "single": "单策略回测",
     "compare": "多策略对比",
+    "portfolio": "组合回测",
+}
+
+PORTFOLIO_SYMBOL_OPTIONS = ["A500", "DIVIDEND", "KC50", "HS300", "SP500", "NASDAQ100"]
+
+PORTFOLIO_DEFAULT_WEIGHTS = {
+    "A500": 50.0,
+    "DIVIDEND": 20.0,
+    "KC50": 10.0,
+}
+
+PORTFOLIO_STRATEGY_OPTIONS = {
+    "portfolio_dca": "组合定投",
+    "portfolio_rebalance": "组合定投 + 再平衡",
 }
 
 
@@ -115,6 +135,45 @@ def _render_charts(equity_curve: list[dict], *, key_prefix: str) -> None:
     st.plotly_chart(fig_drawdown, use_container_width=True, key=f"{key_prefix}_drawdown")
 
 
+def _render_positions(positions: list[dict]) -> None:
+    if not positions:
+        return
+    st.markdown("#### 组合持仓明细")
+    position_df = pd.DataFrame(
+        [
+            {
+                "symbol": row["symbol"],
+                "quantity": row["quantity"],
+                "average_cost": row["average_cost"],
+                "last_price": row["last_price"],
+                "market_value": row["market_value"],
+                "weight": row["weight"],
+                "target_weight": row["target_weight"],
+                "deviation": row["deviation"],
+            }
+            for row in positions
+        ]
+    )
+    display_df = position_df.copy()
+    for col in ("weight", "target_weight", "deviation"):
+        if col in display_df.columns:
+            display_df[col] = display_df[col].apply(_format_pct)
+    for col in ("average_cost", "last_price", "market_value"):
+        if col in display_df.columns:
+            display_df[col] = display_df[col].apply(_format_money)
+    column_map = {
+        "symbol": "标的代码",
+        "quantity": "持仓数量",
+        "average_cost": "平均成本",
+        "last_price": "最新价格",
+        "market_value": "持仓市值",
+        "weight": "当前权重",
+        "target_weight": "目标权重",
+        "deviation": "权重偏离",
+    }
+    st.dataframe(display_df.rename(columns=column_map), use_container_width=True, hide_index=True)
+
+
 def _render_trades(trades: list[dict]) -> None:
     st.markdown("#### 模拟交易记录")
     if not trades:
@@ -145,6 +204,7 @@ def _render_detail(detail: dict, *, key_prefix: str) -> None:
         return
     _render_result_summary(run, result, detail.get("equity_curve") or [])
     _render_charts(detail.get("equity_curve") or [], key_prefix=key_prefix)
+    _render_positions(detail.get("positions") or [])
     _render_trades(detail.get("trades") or [])
 
 
@@ -318,7 +378,33 @@ def render() -> None:
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        symbol = st.selectbox("标的代码", options=symbols, index=0)
+        if mode != "portfolio":
+            symbol = st.selectbox("标的代码", options=symbols, index=0)
+        else:
+            selected_symbols = st.multiselect(
+                "组合标的",
+                options=PORTFOLIO_SYMBOL_OPTIONS,
+                default=["A500", "DIVIDEND", "KC50"],
+            )
+            portfolio_weights: dict[str, float] = {}
+            if selected_symbols:
+                st.caption("目标权重（%）")
+                for portfolio_symbol in selected_symbols:
+                    default_weight = PORTFOLIO_DEFAULT_WEIGHTS.get(portfolio_symbol, 0.0)
+                    portfolio_weights[portfolio_symbol] = st.number_input(
+                        portfolio_symbol,
+                        min_value=0.0,
+                        max_value=100.0,
+                        value=default_weight,
+                        step=1.0,
+                        key=f"portfolio_weight_{portfolio_symbol}",
+                    )
+                total_weight_pct = sum(portfolio_weights.values())
+                st.caption(f"ETF 权重合计：{total_weight_pct:.1f}%")
+                if total_weight_pct > 100.0:
+                    st.error("ETF 权重合计超过 100%，请调整后再运行")
+                elif total_weight_pct < 100.0:
+                    st.info(f"现金目标权重：{100.0 - total_weight_pct:.1f}%（仅用于风险展示，不参与每期定投分配）")
     with c2:
         start_date = st.date_input("开始日期", value=date(2021, 1, 1))
         end_date = st.date_input("结束日期", value=date.today())
@@ -331,7 +417,61 @@ def render() -> None:
             format_func=lambda key: FREQUENCY_OPTIONS[key],
         )
 
-    if mode == "single":
+    if mode == "portfolio":
+        portfolio_strategy = st.selectbox(
+            "组合策略",
+            options=list(PORTFOLIO_STRATEGY_OPTIONS.keys()),
+            format_func=lambda key: PORTFOLIO_STRATEGY_OPTIONS[key],
+        )
+        rebalance_threshold_pct = st.number_input(
+            "再平衡阈值（%）",
+            min_value=1.0,
+            max_value=20.0,
+            value=5.0,
+            step=0.5,
+            help="仅「组合定投 + 再平衡」策略生效",
+        )
+        if st.button("运行组合回测", type="primary"):
+            if len(selected_symbols) < 2:
+                st.warning("请至少选择 2 个组合标的")
+            elif sum(portfolio_weights.values()) > 100.0:
+                st.error("ETF 权重合计超过 100%，请调整后再运行")
+            else:
+                assets = [
+                    PortfolioAssetConfig(symbol=item, target_weight=portfolio_weights[item] / 100.0)
+                    for item in selected_symbols
+                    if portfolio_weights.get(item, 0) > 0
+                ]
+                if len(assets) < 2:
+                    st.warning("请至少为 2 个标的设置大于 0 的目标权重")
+                else:
+                    config = PortfolioBacktestConfig(
+                        assets=assets,
+                        start_date=start_date.strftime("%Y-%m-%d"),
+                        end_date=end_date.strftime("%Y-%m-%d"),
+                        initial_cash=float(initial_cash),
+                        fixed_amount=float(fixed_amount),
+                        frequency=frequency,
+                        strategy_name=portfolio_strategy,
+                        rebalance_threshold=float(rebalance_threshold_pct) / 100.0,
+                    )
+                    with db_session() as conn:
+                        run_id, result, message = run_and_save_portfolio_backtest(conn, config)
+                    if run_id is None:
+                        st.warning(message)
+                    else:
+                        st.success(message)
+                        st.session_state["latest_backtest_run_id"] = run_id
+                        st.session_state.pop("latest_comparison_items", None)
+
+        latest_run_id = st.session_state.get("latest_backtest_run_id")
+        if latest_run_id:
+            with get_connection() as conn:
+                detail = load_backtest_detail(conn, int(latest_run_id))
+            if detail and (detail.get("run") or {}).get("symbol") == "PORTFOLIO":
+                st.subheader("本次组合回测结果")
+                _render_detail(detail, key_prefix=f"latest_{latest_run_id}")
+    elif mode == "single":
         strategy = st.selectbox(
             "策略类型",
             options=list(STRATEGY_OPTIONS.keys()),

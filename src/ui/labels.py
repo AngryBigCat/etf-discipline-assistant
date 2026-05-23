@@ -39,6 +39,7 @@ FIELD_LABELS = {
     "status": "仓位状态",
     "quantity": "持仓数量",
     "latest_price": "最新价",
+    "last_price": "最新价格",
     "signal_date": "信号日期",
     "final_score": "纪律分数",
     "trend_score": "趋势分",
@@ -192,6 +193,8 @@ BACKTEST_STRATEGY_LABELS = {
     "baseline_dca": "普通定投",
     "ma_filter_dca": "均线过滤定投",
     "drawdown_boost": "回撤加仓定投",
+    "portfolio_dca": "组合定投",
+    "portfolio_rebalance": "组合定投 + 再平衡",
 }
 
 BACKTEST_FREQUENCY_LABELS = {
@@ -201,6 +204,7 @@ BACKTEST_FREQUENCY_LABELS = {
 
 BACKTEST_ACTION_LABELS = {
     "buy": "买入",
+    "sell": "卖出",
 }
 
 

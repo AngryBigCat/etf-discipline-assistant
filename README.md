@@ -131,6 +131,17 @@
 - 历史回测记录展示收益率、最大回撤、资金利用率等关键指标
 - **补全与回测结果均不代表未来收益，不构成投资建议**
 
+### 阶段 9.2：组合回测
+
+- 多 ETF 组合历史回测：验证 A500、红利 ETF、科创50 等组合在历史中的收益、回撤、资金利用率、仓位偏离和再平衡效果
+- 组合策略：`portfolio_dca`（组合定投）、`portfolio_rebalance`（组合定投 + 再平衡）
+- 定投金额按 ETF 目标权重归一化分配；现金目标权重仅用于风险展示，不参与每期定投分配
+- 多标的行情取共同可用区间（各标的有效数据起止日的交集），至少 2 个有效标的、至少 30 个交易日
+- 写入 `backtest_run`（`symbol=PORTFOLIO`）/ `backtest_result` / `backtest_trade` / `backtest_equity_curve` / `backtest_position`
+- CLI：`scripts/run_portfolio_backtest.py`
+- Streamlit「回测分析」页新增「组合回测」模式：多标的权重配置、组合收益指标、持仓明细、模拟交易记录
+- **组合回测只用于历史规则验证，不代表未来收益，不构成投资建议；不得根据回测结果自动调整真实配置或自动交易**
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -165,6 +176,7 @@ python scripts/generate_ai_daily_review.py
 python scripts/generate_ai_weekly_review.py
 python scripts/backfill_prices.py --symbol A500 --start 2021-01-01 --end 2026-05-23
 python scripts/run_backtest.py
+python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --cash 100000 --amount 3000 --frequency monthly
 
 pytest
 streamlit run app.py
@@ -176,6 +188,7 @@ streamlit run app.py
 python scripts/backfill_prices.py --symbol A500 --start 2021-01-01 --end 2026-05-23
 python scripts/backfill_prices.py --all --start 2021-01-01 --end 2026-05-23
 python scripts/run_backtest.py --symbol A500 --strategy baseline_dca --start 2021-01-01 --end 2026-05-23 --cash 100000 --amount 3000 --frequency monthly
+python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --cash 100000 --amount 3000 --frequency monthly --strategy portfolio_dca --assets A500:0.5,DIVIDEND:0.2,KC50:0.1
 ```
 
 若补全失败并提示系统代理（如 `127.0.0.1:7890`），请确认 Clash/V2Ray 等代理软件已启动；国内网络也可尝试关闭 Windows「使用代理服务器」后重试。
