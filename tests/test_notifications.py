@@ -12,6 +12,7 @@ from src.notifications.config import format_email_settings_display, get_email_se
 from src.notifications.email_client import send_email
 from src.notifications.models import (
     EVENT_HIGH_PRIORITY_TASKS,
+    EVENT_PORTFOLIO_RISK,
     EVENT_TEST_EMAIL,
     LEVEL_INFO,
     STATUS_FAILED,
@@ -249,6 +250,68 @@ def test_high_priority_tasks_notification(mock_send, memory_conn, monkeypatch):
         call.kwargs.get("event_type") == EVENT_HIGH_PRIORITY_TASKS
         for call in mock_send.call_args_list
     )
+
+
+@patch("src.notifications.service.send_notification")
+def test_high_priority_and_portfolio_risk_notifications_do_not_overlap(
+    mock_send,
+    memory_conn,
+    monkeypatch,
+):
+    monkeypatch.setenv("NOTIFY_ON_HIGH_PRIORITY_TASKS", "true")
+    monkeypatch.setenv("NOTIFY_ON_PORTFOLIO_RISK", "true")
+    monkeypatch.setenv("EMAIL_ENABLED", "true")
+    upsert_task_item(
+        memory_conn,
+        {
+            "task_date": "2026-05-23",
+            "category": "risk",
+            "task_type": "check_portfolio_risk",
+            "title": "仓位超过上限",
+            "priority": "high",
+            "status": "pending",
+            "source_type": "portfolio",
+            "source_key": "risk-1",
+        },
+    )
+    upsert_task_item(
+        memory_conn,
+        {
+            "task_date": "2026-05-23",
+            "category": "daily",
+            "task_type": "review_strategy_signal",
+            "title": "审核策略信号",
+            "priority": "high",
+            "status": "pending",
+            "source_type": "strategy_signal",
+            "source_key": "daily-1",
+        },
+    )
+    mock_send.return_value = MagicMock(success=True, status=STATUS_SUCCESS, message="ok", error=None)
+
+    from src.notifications.service import send_daily_pipeline_notifications
+
+    send_daily_pipeline_notifications(
+        memory_conn,
+        "2026-05-23",
+        WorkflowResult(success=True, message="done"),
+    )
+
+    high_priority_call = next(
+        call
+        for call in mock_send.call_args_list
+        if call.kwargs.get("event_type") == EVENT_HIGH_PRIORITY_TASKS
+    )
+    portfolio_risk_call = next(
+        call
+        for call in mock_send.call_args_list
+        if call.kwargs.get("event_type") == EVENT_PORTFOLIO_RISK
+    )
+
+    assert "审核策略信号" in high_priority_call.kwargs["body"]
+    assert "仓位超过上限" not in high_priority_call.kwargs["body"]
+    assert "仓位超过上限" in portfolio_risk_call.kwargs["body"]
+    assert "审核策略信号" not in portfolio_risk_call.kwargs["body"]
 
 
 @patch("src.notifications.service.send_daily_pipeline_notifications")

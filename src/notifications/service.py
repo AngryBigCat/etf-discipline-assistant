@@ -184,7 +184,7 @@ def _list_pending_high_priority_tasks(conn, task_date: str) -> list[dict[str, An
         """
         SELECT *
         FROM task_item
-        WHERE task_date = ? AND status = 'pending' AND priority = 'high'
+        WHERE task_date = ? AND status = 'pending' AND priority = 'high' AND category != 'risk'
         ORDER BY id
         """,
         (task_date,),
