@@ -21,6 +21,7 @@ from src.ui.labels import (
     localize_backtest_action,
     localize_backtest_frequency,
     localize_backtest_strategy,
+    localize_backtest_symbol,
     rename_columns,
 )
 
@@ -103,11 +104,13 @@ def _render_result_summary(run: dict, result: dict, equity_curve: list[dict] | N
     with c3:
         st.metric("最大回撤", _format_pct(result.get("max_drawdown")))
         st.metric("交易次数", result.get("trade_count", 0))
-        st.metric("平均成本", _format_money(result.get("average_cost")))
+        average_cost = "—" if run.get("symbol") == "PORTFOLIO" else _format_money(result.get("average_cost"))
+        st.metric("平均成本", average_cost)
         st.metric("资金利用率", _format_pct(result.get("cash_utilization")))
 
     st.caption(
-        f"标的：{run.get('symbol')} · 策略：{localize_backtest_strategy(run.get('strategy_name'))} · "
+        f"标的：{localize_backtest_symbol(run.get('symbol'))} · "
+        f"策略：{localize_backtest_strategy(run.get('strategy_name'))} · "
         f"频率：{localize_backtest_frequency(run.get('frequency'))}"
     )
     st.caption(f"请求区间：{requested_start} ~ {requested_end}")
@@ -142,7 +145,7 @@ def _render_positions(positions: list[dict]) -> None:
     position_df = pd.DataFrame(
         [
             {
-                "symbol": row["symbol"],
+                "symbol": localize_backtest_symbol(row["symbol"]),
                 "quantity": row["quantity"],
                 "average_cost": row["average_cost"],
                 "last_price": row["last_price"],
@@ -183,7 +186,7 @@ def _render_trades(trades: list[dict]) -> None:
         [
             {
                 "trade_date": row["trade_date"],
-                "symbol": row["symbol"],
+                "symbol": localize_backtest_symbol(row["symbol"]),
                 "action": localize_backtest_action(row["action"]),
                 "price": row["price"],
                 "amount": row["amount"],
@@ -321,7 +324,7 @@ def _render_history(rows: list) -> None:
     preview_df = pd.DataFrame(
         [
             {
-                "symbol": row["symbol"],
+                "symbol": localize_backtest_symbol(row["symbol"]),
                 "strategy_name": localize_backtest_strategy(row["strategy_name"]),
                 "start_date": row["start_date"],
                 "end_date": row["end_date"],
@@ -349,7 +352,7 @@ def _render_history(rows: list) -> None:
 
     for row in rows:
         label = (
-            f"{row['symbol']} · {localize_backtest_strategy(row['strategy_name'])} · "
+            f"{localize_backtest_symbol(row['symbol'])} · {localize_backtest_strategy(row['strategy_name'])} · "
             f"{row['start_date']} ~ {row['end_date']} · "
             f"{_format_pct(row['total_return'])}"
         )

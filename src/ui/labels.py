@@ -207,6 +207,10 @@ BACKTEST_ACTION_LABELS = {
     "sell": "卖出",
 }
 
+BACKTEST_SYMBOL_LABELS = {
+    "PORTFOLIO": "组合",
+}
+
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={col: FIELD_LABELS.get(col, col) for col in df.columns})
@@ -271,3 +275,9 @@ def localize_backtest_frequency(value: object) -> object:
 
 def localize_backtest_action(value: object) -> object:
     return BACKTEST_ACTION_LABELS.get(value, value)
+
+
+def localize_backtest_symbol(value: object) -> object:
+    if isinstance(value, str):
+        return BACKTEST_SYMBOL_LABELS.get(value, value)
+    return value
