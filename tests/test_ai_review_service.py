@@ -155,7 +155,32 @@ def test_append_disclaimer_when_missing():
     assert "不构成投资建议" in cleaned
 
 
-@pytest.mark.parametrize("word", ["保证收益", "必涨", "必买", "满仓"])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "下个交易日注意控制仓位，不要满仓。",
+        "当前波动较大，避免满仓操作。",
+        "不要建议满仓，保持现金缓冲。",
+    ],
+)
+def test_full_position_risk_warnings_not_blocked(text):
+    cleaned, status, error_message = validate_ai_review_output(text)
+    assert status == "success"
+    assert error_message == ""
+    assert "满仓" in cleaned
+    assert "[已屏蔽]" not in cleaned
+
+
+@pytest.mark.parametrize("phrase", ["建议满仓", "可以满仓", "必须满仓"])
+def test_full_position_recommendations_blocked(phrase):
+    cleaned, status, error_message = validate_ai_review_output(f"复盘结论：{phrase}。")
+    assert status == "blocked"
+    assert phrase in error_message
+    assert phrase not in cleaned
+    assert "[已屏蔽]" in cleaned
+
+
+@pytest.mark.parametrize("word", ["保证收益", "必涨", "必买", "建议满仓", "可以满仓", "必须满仓"])
 def test_dangerous_words_blocked(memory_conn, settings, word):
     _seed(memory_conn, settings)
     review, saved, _ = generate_daily_ai_review(

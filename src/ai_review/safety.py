@@ -6,9 +6,28 @@ from typing import Any
 
 RISK_DISCLAIMER = "本内容不构成投资建议。"
 
-DANGEROUS_WORDS = ("保证收益", "必涨", "必买", "满仓", "稳赚", "包赚")
+DANGEROUS_WORDS = ("保证收益", "必涨", "必买", "稳赚", "包赚")
+
+# 「满仓」仅在有明确建议语义时屏蔽；「不要满仓 / 避免满仓」等风险提示放行。
+FULL_POSITION_DANGEROUS_PHRASES = ("建议满仓", "可以满仓", "必须满仓")
+FULL_POSITION_SAFE_PREFIXES = ("不要", "避免", "勿", "禁止", "不可", "不能", "不应", "不该", "不得")
 
 SENSITIVE_KEYS = {"api_key", "database_path", "note", "settings", "input_snapshot"}
+
+
+def _find_full_position_hits(text: str) -> list[str]:
+    hits: list[str] = []
+    for phrase in FULL_POSITION_DANGEROUS_PHRASES:
+        start = 0
+        while True:
+            idx = text.find(phrase, start)
+            if idx == -1:
+                break
+            before = text[:idx]
+            if not any(before.endswith(prefix) for prefix in FULL_POSITION_SAFE_PREFIXES):
+                hits.append(phrase)
+            start = idx + len(phrase)
+    return hits
 
 
 def append_risk_disclaimer(text: str) -> str:
@@ -22,11 +41,12 @@ def append_risk_disclaimer(text: str) -> str:
 def validate_ai_review_output(text: str) -> tuple[str, str, str]:
     cleaned = text or ""
     hit_words = [word for word in DANGEROUS_WORDS if word in cleaned]
+    hit_words.extend(_find_full_position_hits(cleaned))
     if hit_words:
-        for word in hit_words:
+        for word in dict.fromkeys(hit_words):
             cleaned = cleaned.replace(word, "[已屏蔽]")
         cleaned = append_risk_disclaimer(cleaned)
-        return cleaned, "blocked", f"检测到危险表述：{', '.join(hit_words)}"
+        return cleaned, "blocked", f"检测到危险表述：{', '.join(dict.fromkeys(hit_words))}"
     cleaned = append_risk_disclaimer(cleaned)
     return cleaned, "success", ""
 
