@@ -9,7 +9,7 @@ import pytest
 from src.backtest.models import BacktestConfig
 from src.backtest.service import load_backtest_detail, run_and_save_backtest
 from src.db.repository import upsert_daily_prices
-from src.db.schema import init_schema
+from src.db.schema import _table_has_column, apply_schema_migrations, init_schema
 
 
 @pytest.fixture
@@ -63,6 +63,9 @@ def test_run_and_save_backtest_persists_all_tables(memory_conn):
     assert detail["result"]["trade_count"] == result.trade_count
     assert len(detail["trades"]) == result.trade_count
     assert len(detail["equity_curve"]) == len(result.equity_curve)
+    assert detail["result"]["actual_start_date"] == result.actual_start_date
+    assert detail["result"]["actual_end_date"] == result.actual_end_date
+    assert detail["result"]["trading_days"] == result.trading_days
 
 
 def test_run_and_save_backtest_empty_data(memory_conn):
@@ -82,3 +85,31 @@ def test_run_and_save_backtest_empty_data(memory_conn):
 
     run_count = memory_conn.execute("SELECT COUNT(*) FROM backtest_run").fetchone()[0]
     assert run_count == 0
+
+
+def test_backtest_result_date_columns_migration():
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        """
+        CREATE TABLE backtest_result (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL,
+            final_value REAL,
+            total_invested REAL,
+            cash_value REAL,
+            position_value REAL,
+            total_return REAL,
+            annualized_return REAL,
+            max_drawdown REAL,
+            trade_count INTEGER,
+            final_quantity REAL,
+            average_cost REAL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    assert not _table_has_column(conn, "backtest_result", "actual_start_date")
+    apply_schema_migrations(conn)
+    assert _table_has_column(conn, "backtest_result", "actual_start_date")
+    assert _table_has_column(conn, "backtest_result", "actual_end_date")
+    assert _table_has_column(conn, "backtest_result", "trading_days")

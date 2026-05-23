@@ -56,6 +56,9 @@ def run_and_save_backtest(
             "trade_count": result.trade_count,
             "final_quantity": result.final_quantity,
             "average_cost": result.average_cost,
+            "actual_start_date": result.actual_start_date,
+            "actual_end_date": result.actual_end_date,
+            "trading_days": result.trading_days,
         },
     )
 

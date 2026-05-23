@@ -98,6 +98,11 @@ FIELD_LABELS = {
     "cash_value": "剩余现金",
     "start_date": "开始日期",
     "end_date": "结束日期",
+    "requested_start_date": "请求开始日期",
+    "requested_end_date": "请求结束日期",
+    "actual_start_date": "实际开始日期",
+    "actual_end_date": "实际结束日期",
+    "trading_days": "交易日数量",
 }
 
 ROLE_LABELS = {

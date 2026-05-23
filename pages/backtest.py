@@ -42,7 +42,18 @@ def _format_money(value: float | None) -> str:
     return f"{value:,.2f}"
 
 
-def _render_result_summary(run: dict, result: dict) -> None:
+def _render_result_summary(run: dict, result: dict, equity_curve: list[dict] | None = None) -> None:
+    requested_start = run.get("start_date") or "—"
+    requested_end = run.get("end_date") or "—"
+    actual_start = result.get("actual_start_date") or "—"
+    actual_end = result.get("actual_end_date") or "—"
+    if (actual_start == "—" or actual_end == "—") and equity_curve:
+        actual_start = equity_curve[0].get("trade_date") or actual_start
+        actual_end = equity_curve[-1].get("trade_date") or actual_end
+    trading_days = result.get("trading_days")
+    if trading_days is None and equity_curve:
+        trading_days = len(equity_curve)
+
     c1, c2, c3 = st.columns(3)
     with c1:
         st.metric("期末资产", _format_money(result.get("final_value")))
@@ -59,9 +70,20 @@ def _render_result_summary(run: dict, result: dict) -> None:
 
     st.caption(
         f"标的：{run.get('symbol')} · 策略：{localize_backtest_strategy(run.get('strategy_name'))} · "
-        f"区间：{run.get('start_date')} ~ {run.get('end_date')} · "
         f"频率：{localize_backtest_frequency(run.get('frequency'))}"
     )
+    st.caption(f"请求区间：{requested_start} ~ {requested_end}")
+    st.caption(f"实际数据区间：{actual_start} ~ {actual_end} · 交易日数量：{trading_days or '—'}")
+
+    if (
+        actual_start not in ("—", "")
+        and requested_start not in ("—", "")
+        and actual_start > requested_start
+    ):
+        st.warning(
+            f"当前数据库行情数据晚于你选择的开始日期，本次回测实际从 {actual_start} 开始。"
+            "年化收益按实际数据区间计算。"
+        )
 
 
 def _render_charts(equity_curve: list[dict], *, key_prefix: str) -> None:
@@ -122,7 +144,7 @@ def _render_detail(detail: dict, *, key_prefix: str) -> None:
     if not run or not result:
         st.warning("未找到回测详情")
         return
-    _render_result_summary(run, result)
+    _render_result_summary(run, result, detail.get("equity_curve") or [])
     _render_charts(detail.get("equity_curve") or [], key_prefix=key_prefix)
     _render_trades(detail.get("trades") or [])
 

@@ -214,6 +214,9 @@ SCHEMA_STATEMENTS: list[str] = [
         trade_count INTEGER,
         final_quantity REAL,
         average_cost REAL,
+        actual_start_date TEXT,
+        actual_end_date TEXT,
+        trading_days INTEGER,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(run_id) REFERENCES backtest_run(id)
     )
@@ -291,6 +294,18 @@ def apply_schema_migrations(conn: sqlite3.Connection) -> None:
         conn, "ai_review", "behavior_findings"
     ):
         conn.execute("ALTER TABLE ai_review ADD COLUMN behavior_findings TEXT")
+
+    if _table_exists(conn, "backtest_result"):
+        backtest_result_columns = {
+            "actual_start_date": "TEXT",
+            "actual_end_date": "TEXT",
+            "trading_days": "INTEGER",
+        }
+        for column_name, column_def in backtest_result_columns.items():
+            if not _table_has_column(conn, "backtest_result", column_name):
+                conn.execute(
+                    f"ALTER TABLE backtest_result ADD COLUMN {column_name} {column_def}"
+                )
 
 
 def init_schema(conn: sqlite3.Connection) -> None:

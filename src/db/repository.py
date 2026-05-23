@@ -807,11 +807,11 @@ def save_backtest_result(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
         INSERT INTO backtest_result (
             run_id, final_value, total_invested, cash_value, position_value,
             total_return, annualized_return, max_drawdown, trade_count,
-            final_quantity, average_cost
+            final_quantity, average_cost, actual_start_date, actual_end_date, trading_days
         ) VALUES (
             :run_id, :final_value, :total_invested, :cash_value, :position_value,
             :total_return, :annualized_return, :max_drawdown, :trade_count,
-            :final_quantity, :average_cost
+            :final_quantity, :average_cost, :actual_start_date, :actual_end_date, :trading_days
         )
         """,
         row,

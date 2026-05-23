@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from src.backtest.engine import run_backtest
+from src.backtest.metrics import calculate_annualized_return
 from src.backtest.models import BacktestConfig
 from src.db.repository import upsert_daily_prices
 from src.db.schema import init_schema
@@ -122,3 +123,32 @@ def test_backtest_does_not_touch_real_tables():
     assert conn.execute("SELECT COUNT(*) FROM trade_log").fetchone()[0] == trade_log_count
     assert conn.execute("SELECT COUNT(*) FROM holding_snapshot").fetchone()[0] == holding_count
     assert conn.execute("SELECT COUNT(*) FROM account_snapshot").fetchone()[0] == account_count
+
+
+def test_backtest_uses_actual_date_range_for_metrics():
+    price_df = _make_price_df(60, close=10.0)
+    price_df = price_df[["symbol", "trade_date", "close"]]
+    actual_start = str(price_df.iloc[0]["trade_date"])
+    actual_end = str(price_df.iloc[-1]["trade_date"])
+    config = BacktestConfig(
+        symbol="A500",
+        strategy_name="baseline_dca",
+        start_date="2021-01-01",
+        end_date=actual_end,
+        initial_cash=10000,
+        fixed_amount=1000,
+        frequency="monthly",
+    )
+    result = run_backtest(config, price_df)
+    assert result.valid is True
+    assert result.requested_start_date == "2021-01-01"
+    assert result.actual_start_date == actual_start
+    assert result.actual_start_date > result.requested_start_date
+    assert result.trading_days == len(price_df)
+    expected_annualized = calculate_annualized_return(
+        result.final_value,
+        config.initial_cash,
+        result.actual_start_date,
+        result.actual_end_date,
+    )
+    assert result.annualized_return == expected_annualized

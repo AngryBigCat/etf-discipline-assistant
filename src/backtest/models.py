@@ -54,3 +54,8 @@ class BacktestResult:
     equity_curve: list[BacktestDailyState] = field(default_factory=list)
     valid: bool = True
     error_message: str = ""
+    requested_start_date: str = ""
+    requested_end_date: str = ""
+    actual_start_date: str = ""
+    actual_end_date: str = ""
+    trading_days: int = 0
