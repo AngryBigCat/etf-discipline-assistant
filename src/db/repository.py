@@ -684,3 +684,101 @@ def list_weekly_reports(conn: sqlite3.Connection, limit: int = 20) -> list[sqlit
         (limit,),
     )
     return cur.fetchall()
+
+
+def upsert_ai_review(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    sql = """
+    INSERT INTO ai_review (
+        review_type, target_date, week_start, week_end, source_type, source_digest,
+        prompt_version, provider, model, input_snapshot, output_text,
+        discipline_summary, risk_summary, action_suggestion, status, error_message
+    ) VALUES (
+        :review_type, :target_date, :week_start, :week_end, :source_type, :source_digest,
+        :prompt_version, :provider, :model, :input_snapshot, :output_text,
+        :discipline_summary, :risk_summary, :action_suggestion, :status, :error_message
+    )
+    ON CONFLICT(review_type, target_date, week_start, week_end, prompt_version) DO UPDATE SET
+        source_type = excluded.source_type,
+        source_digest = excluded.source_digest,
+        provider = excluded.provider,
+        model = excluded.model,
+        input_snapshot = excluded.input_snapshot,
+        output_text = excluded.output_text,
+        discipline_summary = excluded.discipline_summary,
+        risk_summary = excluded.risk_summary,
+        action_suggestion = excluded.action_suggestion,
+        status = excluded.status,
+        error_message = excluded.error_message
+    """
+    conn.execute(sql, row)
+
+
+def get_ai_review_by_daily_date(
+    conn: sqlite3.Connection,
+    target_date: str,
+    prompt_version: str = "v1",
+) -> sqlite3.Row | None:
+    cur = conn.execute(
+        """
+        SELECT * FROM ai_review
+        WHERE review_type = 'daily' AND target_date = ? AND prompt_version = ?
+        """,
+        (target_date, prompt_version),
+    )
+    return cur.fetchone()
+
+
+def get_ai_review_by_week(
+    conn: sqlite3.Connection,
+    week_start: str,
+    week_end: str,
+    prompt_version: str = "v1",
+) -> sqlite3.Row | None:
+    cur = conn.execute(
+        """
+        SELECT * FROM ai_review
+        WHERE review_type = 'weekly'
+          AND week_start = ? AND week_end = ? AND prompt_version = ?
+        """,
+        (week_start, week_end, prompt_version),
+    )
+    return cur.fetchone()
+
+
+def get_latest_ai_reviews(conn: sqlite3.Connection, limit: int = 20) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM ai_review
+        ORDER BY created_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()
+
+
+def list_ai_reviews(
+    conn: sqlite3.Connection,
+    review_type: str | None = None,
+    limit: int = 30,
+) -> list[sqlite3.Row]:
+    if review_type:
+        cur = conn.execute(
+            """
+            SELECT * FROM ai_review
+            WHERE review_type = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (review_type, limit),
+        )
+    else:
+        cur = conn.execute(
+            """
+            SELECT * FROM ai_review
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+    return cur.fetchall()

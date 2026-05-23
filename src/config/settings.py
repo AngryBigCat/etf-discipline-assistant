@@ -39,6 +39,16 @@ def get_price_data_source() -> str:
     return os.getenv("PRICE_DATA_SOURCE", "auto").lower()
 
 
+def get_llm_settings() -> dict[str, Any]:
+    return {
+        "provider": (os.getenv("LLM_PROVIDER") or "mock").lower(),
+        "api_key": os.getenv("LLM_API_KEY") or "",
+        "api_base": os.getenv("LLM_API_BASE") or "",
+        "model": os.getenv("LLM_MODEL") or "",
+        "timeout": int(os.getenv("LLM_TIMEOUT") or 30),
+    }
+
+
 @lru_cache
 def load_settings() -> dict[str, Any]:
     config_path = get_config_path()

@@ -95,6 +95,17 @@
 - 无账户快照时友好提示；无交易日志时统计为 0，不崩溃
 - 本阶段不接 AI，不自动交易，不自动修改持仓
 
+### 阶段 8：AI 复盘
+
+- 基于日报/周报、交易日志、策略信号与仓位状态生成 AI 复盘解释
+- 默认 `MockLLMClient`，无 API Key 也可离线使用
+- 可选 `LLM_PROVIDER=openai_compatible` 接入 OpenAI 兼容 API，失败时 fallback mock
+- 写入 `ai_review` 表，支持同日/同周 upsert 覆盖
+- CLI：`scripts/generate_ai_daily_review.py`、`scripts/generate_ai_weekly_review.py`
+- Streamlit「AI复盘」页：生成/查看日复盘与周复盘、历史列表
+- 输出经 `safety.py` 校验，自动追加「不构成投资建议」，危险词会被屏蔽
+- AI 仅用于纪律解释与行为复盘，**不决定买卖、不修改持仓/信号/交易日志**
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -109,6 +120,7 @@
 - 策略信号
 - 交易日志
 - 报告复盘
+- AI复盘
 
 ## 运行方式
 
@@ -123,6 +135,8 @@ python scripts/daily_update.py
 python scripts/generate_signals.py
 python scripts/generate_daily_report.py
 python scripts/generate_weekly_report.py
+python scripts/generate_ai_daily_review.py
+python scripts/generate_ai_weekly_review.py
 
 pytest
 streamlit run app.py
@@ -144,16 +158,13 @@ streamlit run app.py
 
 - `DATABASE_PATH`
 - `PRICE_DATA_SOURCE=auto|akshare|mock`
+- `LLM_PROVIDER=mock|openai_compatible`
+- `LLM_API_KEY`
+- `LLM_API_BASE`
+- `LLM_MODEL`
+- `LLM_TIMEOUT`
 
 ## 未来蓝图
-
-### 阶段 8：AI 复盘
-
-- 将结构化交易数据输入大模型
-- 生成自然语言复盘
-- 分析用户是否频繁追涨、恐慌、临时决策
-- 给出下周纪律建议
-- AI 只解释和复盘，不直接决定交易
 
 ### 阶段 9：回测模块
 

@@ -161,6 +161,29 @@ SCHEMA_STATEMENTS: list[str] = [
         UNIQUE(week_start, week_end)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS ai_review (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        review_type TEXT NOT NULL,
+        target_date TEXT NOT NULL DEFAULT '',
+        week_start TEXT NOT NULL DEFAULT '',
+        week_end TEXT NOT NULL DEFAULT '',
+        source_type TEXT NOT NULL,
+        source_digest TEXT,
+        prompt_version TEXT NOT NULL DEFAULT 'v1',
+        provider TEXT DEFAULT 'mock',
+        model TEXT,
+        input_snapshot TEXT,
+        output_text TEXT,
+        discipline_summary TEXT,
+        risk_summary TEXT,
+        action_suggestion TEXT,
+        status TEXT DEFAULT 'success',
+        error_message TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(review_type, target_date, week_start, week_end, prompt_version)
+    )
+    """,
     "CREATE INDEX IF NOT EXISTS idx_daily_price_symbol_date ON daily_price(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_indicator_daily_symbol_date ON indicator_daily(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_trade_log_trade_date ON trade_log(trade_date)",

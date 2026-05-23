@@ -68,6 +68,12 @@ FIELD_LABELS = {
     "total_position": "ETF 总仓位",
     "cash_position": "现金仓位",
     "preview": "摘要预览",
+    "review_type": "复盘类型",
+    "target_date": "复盘日期",
+    "output_text": "原始输出",
+    "status": "状态",
+    "provider": "模型来源",
+    "model": "模型",
 }
 
 ROLE_LABELS = {
@@ -140,6 +146,17 @@ EXECUTION_STATUS_LABELS = {
     "ignored": "忽略信号",
 }
 
+REVIEW_TYPE_LABELS = {
+    "daily": "日复盘",
+    "weekly": "周复盘",
+}
+
+REVIEW_STATUS_LABELS_AI = {
+    "success": "成功",
+    "blocked": "已屏蔽",
+    "failed": "失败",
+}
+
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={col: FIELD_LABELS.get(col, col) for col in df.columns})
@@ -184,3 +201,11 @@ def localize_emotion(value: object) -> object:
 
 def localize_execution_status(value: object) -> object:
     return EXECUTION_STATUS_LABELS.get(value, value)
+
+
+def localize_review_type(value: object) -> object:
+    return REVIEW_TYPE_LABELS.get(value, value)
+
+
+def localize_ai_status(value: object) -> object:
+    return REVIEW_STATUS_LABELS_AI.get(value, value)
