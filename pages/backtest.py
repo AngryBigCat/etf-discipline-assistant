@@ -55,6 +55,11 @@ PORTFOLIO_STRATEGY_OPTIONS = {
     "portfolio_rebalance": "组合定投 + 再平衡",
 }
 
+PORTFOLIO_STRATEGY_DESCRIPTIONS = {
+    "portfolio_dca": "每期按目标权重买入，不主动卖出",
+    "portfolio_rebalance": "每期定投，并在权重偏离超过阈值时模拟调回目标权重",
+}
+
 
 def _format_pct(value: float | None) -> str:
     if value is None or pd.isna(value):
@@ -426,14 +431,17 @@ def render() -> None:
             options=list(PORTFOLIO_STRATEGY_OPTIONS.keys()),
             format_func=lambda key: PORTFOLIO_STRATEGY_OPTIONS[key],
         )
-        rebalance_threshold_pct = st.number_input(
-            "再平衡阈值（%）",
-            min_value=1.0,
-            max_value=20.0,
-            value=5.0,
-            step=0.5,
-            help="仅「组合定投 + 再平衡」策略生效",
-        )
+        st.caption(PORTFOLIO_STRATEGY_DESCRIPTIONS[portfolio_strategy])
+        if portfolio_strategy == "portfolio_rebalance":
+            rebalance_threshold_pct = st.number_input(
+                "再平衡阈值（%）",
+                min_value=1.0,
+                max_value=20.0,
+                value=5.0,
+                step=0.5,
+            )
+        else:
+            rebalance_threshold_pct = 5.0
         if st.button("运行组合回测", type="primary"):
             if len(selected_symbols) < 2:
                 st.warning("请至少选择 2 个组合标的")
