@@ -65,10 +65,14 @@ def _normalize_ratio(value: float) -> float:
     return value
 
 
+def _is_cash_asset(asset: dict[str, Any]) -> bool:
+    return asset.get("symbol") == "CASH" or asset.get("role") == "cash"
+
+
 def sum_etf_target_weights(assets: list[dict[str, Any]]) -> float:
     total = 0.0
     for asset in assets:
-        if asset.get("symbol") == "CASH":
+        if _is_cash_asset(asset):
             continue
         target_weight = asset.get("target_weight")
         if target_weight is not None:

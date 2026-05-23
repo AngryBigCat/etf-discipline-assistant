@@ -11,9 +11,11 @@ import yaml
 from src.config.editor import (
     ConfigValidationError,
     backup_config_file,
+    compute_implicit_cash_target_weight,
     format_ai_settings_display,
     load_editable_config,
     save_editable_config,
+    sum_etf_target_weights,
     validate_editable_config,
 )
 from src.config.settings import load_settings
@@ -115,6 +117,16 @@ def test_validate_target_weight_sum_cannot_exceed_100_percent(sample_config: dic
     sample_config["assets"][0]["target_weight"] = 1.10
     errors = validate_editable_config(sample_config)
     assert any("100%" in error for error in errors)
+
+
+def test_sum_etf_target_weights_excludes_cash_role_when_symbol_is_not_cash():
+    assets = [
+        {"symbol": "A500", "role": "core", "target_weight": 0.50},
+        {"symbol": "MONEY", "role": "cash", "target_weight": 0.20},
+    ]
+
+    assert sum_etf_target_weights(assets) == 0.50
+    assert compute_implicit_cash_target_weight(assets) == 0.50
 
 
 def test_save_editable_config_creates_backup(config_file: Path, sample_config: dict, tmp_path: Path, monkeypatch):
