@@ -7,8 +7,9 @@ from src.config.settings import load_settings
 from src.db.connection import get_connection
 from src.db.repository import get_portfolio_overview
 from src.portfolio.rebalance import (
-    RISK_STATUS_EXCEED_MAX,
-    RISK_STATUS_OVERWEIGHT,
+    ALERT_SEVERITY_ERROR,
+    ALERT_SEVERITY_INFO,
+    ALERT_SEVERITY_WARNING,
     SIGNAL_STATUS_WATCH_ONLY,
 )
 from src.ui.labels import localize_bool, localize_status, rename_columns
@@ -48,7 +49,14 @@ def render() -> None:
     if alerts:
         st.subheader("仓位提醒")
         for alert in alerts:
-            st.warning(alert)
+            message = alert["message"]
+            severity = alert.get("severity", ALERT_SEVERITY_WARNING)
+            if severity == ALERT_SEVERITY_ERROR:
+                st.error(message)
+            elif severity == ALERT_SEVERITY_WARNING:
+                st.warning(message)
+            else:
+                st.info(message)
 
     positions = overview.get("positions") or []
     if not positions:
@@ -96,14 +104,7 @@ def render() -> None:
     df = rename_columns(pd.DataFrame(rows)[display_columns])
     st.dataframe(df, use_container_width=True, hide_index=True)
 
-    exceed_rows = [p for p in positions if p["risk_status"] == RISK_STATUS_EXCEED_MAX]
-    over_rows = [p for p in positions if p["risk_status"] == RISK_STATUS_OVERWEIGHT]
     watch_rows = [p for p in positions if p["signal_status"] == SIGNAL_STATUS_WATCH_ONLY]
-
-    if exceed_rows:
-        st.error("超过最大仓位上限：" + "、".join(r["symbol"] for r in exceed_rows))
-    if over_rows:
-        st.warning("高于目标仓位：" + "、".join(r["symbol"] for r in over_rows))
     if watch_rows:
         st.info("只观察标的（不参与策略信号）：" + "、".join(r["symbol"] for r in watch_rows))
 

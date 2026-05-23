@@ -407,5 +407,5 @@ def get_portfolio_overview(conn: sqlite3.Connection, settings: dict[str, Any]) -
         "total_plan_amount": total_plan_amount,
         "account": account,
         "positions": [row.__dict__ for row in position_rows],
-        "alerts": build_alerts(position_rows),
+        "alerts": [alert.__dict__ for alert in build_alerts(position_rows)],
     }

@@ -21,6 +21,17 @@ STATUS_EXCEED_MAX = RISK_STATUS_EXCEED_MAX
 STATUS_WATCH_ONLY = SIGNAL_STATUS_WATCH_ONLY
 
 
+ALERT_SEVERITY_ERROR = "error"
+ALERT_SEVERITY_WARNING = "warning"
+ALERT_SEVERITY_INFO = "info"
+
+
+@dataclass
+class PortfolioAlert:
+    message: str
+    severity: str
+
+
 @dataclass
 class PositionRow:
     symbol: str
@@ -114,21 +125,38 @@ def build_position_rows(
     return rows
 
 
-def build_alerts(position_rows: list[PositionRow]) -> list[str]:
-    alerts: list[str] = []
+def build_alerts(position_rows: list[PositionRow]) -> list[PortfolioAlert]:
+    alerts: list[PortfolioAlert] = []
     for row in position_rows:
         if row.risk_status == RISK_STATUS_EXCEED_MAX:
             watch_note = "（只观察标的）" if row.signal_status == SIGNAL_STATUS_WATCH_ONLY else ""
             alerts.append(
-                f"{row.symbol} 超过最大仓位上限{watch_note}"
-                f"（当前持仓市值 {row.market_value:.2f} > 最大允许市值 {row.max_allowed_value:.2f}）"
+                PortfolioAlert(
+                    message=(
+                        f"{row.symbol} 超过最大仓位上限{watch_note}"
+                        f"（当前持仓市值 {row.market_value:.2f} > 最大允许市值 {row.max_allowed_value:.2f}）"
+                    ),
+                    severity=ALERT_SEVERITY_ERROR,
+                )
             )
         elif row.risk_status == RISK_STATUS_OVERWEIGHT:
             watch_note = "（只观察标的）" if row.signal_status == SIGNAL_STATUS_WATCH_ONLY else ""
-            alerts.append(f"{row.symbol} 高于目标仓位{watch_note}（偏离 {row.deviation * 100:.1f}%）")
+            alerts.append(
+                PortfolioAlert(
+                    message=f"{row.symbol} 高于目标仓位{watch_note}（偏离 {row.deviation * 100:.1f}%）",
+                    severity=ALERT_SEVERITY_WARNING,
+                )
+            )
         elif (
             row.risk_status == RISK_STATUS_UNDERWEIGHT
             and row.signal_status == SIGNAL_STATUS_ACTIVE
         ):
-            alerts.append(f"{row.symbol} 低于目标仓位，可考虑优先补仓（偏离 {row.deviation * 100:.1f}%）")
+            alerts.append(
+                PortfolioAlert(
+                    message=(
+                        f"{row.symbol} 低于目标仓位，可考虑优先补仓（偏离 {row.deviation * 100:.1f}%）"
+                    ),
+                    severity=ALERT_SEVERITY_INFO,
+                )
+            )
     return alerts
