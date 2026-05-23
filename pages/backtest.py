@@ -372,7 +372,8 @@ def render() -> None:
     st.info("回测仅用于历史规则验证，不代表未来收益，不构成投资建议。")
 
     settings = load_settings()
-    assets = get_enabled_portfolio_assets(settings)
+    with get_connection() as conn:
+        assets = get_enabled_portfolio_assets(conn)
     symbols = [asset["symbol"] for asset in assets if asset.get("symbol") != "CASH"]
     if not symbols:
         symbols = ["A500"]

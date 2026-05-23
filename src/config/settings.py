@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import yaml
 from dotenv import load_dotenv
+
+from src.assets.queries import (
+    list_enabled_portfolio_assets as _list_enabled_portfolio_assets,
+    list_signal_assets as _list_signal_assets,
+    list_watch_only_assets as _list_watch_only_assets,
+)
 
 load_dotenv()
 
@@ -60,57 +67,25 @@ def clear_settings_cache() -> None:
     load_settings.cache_clear()
 
 
-def get_tradeable_assets(settings: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    cfg = settings or load_settings()
-    assets: list[dict[str, Any]] = []
-    for asset in cfg.get("assets", []):
-        if not asset.get("enabled", True):
-            continue
-        fund_code = (asset.get("fund_code") or "").strip()
-        if not fund_code:
-            continue
-        assets.append(asset)
-    return assets
+def get_tradeable_assets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    assets = _list_enabled_portfolio_assets(conn)
+    return [
+        asset
+        for asset in assets
+        if str(asset.get("fund_code") or "").strip()
+    ]
 
 
-def get_enabled_portfolio_assets(settings: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def get_enabled_portfolio_assets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """enabled=true ETF assets for portfolio entry (excludes CASH)."""
-    cfg = settings or load_settings()
-    assets: list[dict[str, Any]] = []
-    for asset in cfg.get("assets", []):
-        if not asset.get("enabled", True):
-            continue
-        if asset.get("symbol") == "CASH":
-            continue
-        assets.append(asset)
-    return assets
+    return _list_enabled_portfolio_assets(conn)
 
 
-def get_signal_assets(settings: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def get_signal_assets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """enabled=true, enabled_for_signal=true, excludes CASH."""
-    cfg = settings or load_settings()
-    assets: list[dict[str, Any]] = []
-    for asset in cfg.get("assets", []):
-        if not asset.get("enabled", True):
-            continue
-        if asset.get("symbol") == "CASH":
-            continue
-        if not asset.get("enabled_for_signal", True):
-            continue
-        assets.append(asset)
-    return assets
+    return _list_signal_assets(conn)
 
 
-def get_watch_only_assets(settings: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def get_watch_only_assets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """enabled=true, enabled_for_signal=false, excludes CASH."""
-    cfg = settings or load_settings()
-    assets: list[dict[str, Any]] = []
-    for asset in cfg.get("assets", []):
-        if not asset.get("enabled", True):
-            continue
-        if asset.get("symbol") == "CASH":
-            continue
-        if asset.get("enabled_for_signal", True):
-            continue
-        assets.append(asset)
-    return assets
+    return _list_watch_only_assets(conn)

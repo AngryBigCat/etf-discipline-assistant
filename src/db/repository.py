@@ -6,6 +6,26 @@ from typing import Any
 import pandas as pd
 
 
+def _asset_to_params(asset: dict[str, Any]) -> dict[str, Any]:
+    symbol = str(asset["symbol"]).strip().upper()
+    return {
+        "symbol": symbol,
+        "name": asset.get("name") or symbol,
+        "fund_code": asset.get("fund_code") or None,
+        "exchange": asset.get("exchange") or None,
+        "index_code": asset.get("index_code") or None,
+        "role": asset.get("role"),
+        "market": asset.get("market"),
+        "risk_level": asset.get("risk_level", 3),
+        "target_weight": asset.get("target_weight", 0),
+        "max_weight": asset.get("max_weight", 0),
+        "min_weight": asset.get("min_weight", 0),
+        "single_buy_ratio": asset.get("single_buy_ratio", 0),
+        "enabled": 1 if asset.get("enabled", True) else 0,
+        "enabled_for_signal": 1 if asset.get("enabled_for_signal", False) else 0,
+    }
+
+
 def upsert_etf_universe(conn: sqlite3.Connection, assets: list[dict[str, Any]]) -> int:
     sql = """
     INSERT INTO etf_universe (
@@ -35,25 +55,58 @@ def upsert_etf_universe(conn: sqlite3.Connection, assets: list[dict[str, Any]]) 
     """
     count = 0
     for asset in assets:
-        params = {
-            "symbol": asset["symbol"],
-            "name": asset["name"],
-            "fund_code": asset.get("fund_code") or None,
-            "exchange": asset.get("exchange") or None,
-            "index_code": asset.get("index_code") or None,
-            "role": asset.get("role"),
-            "market": asset.get("market"),
-            "risk_level": asset.get("risk_level", 3),
-            "target_weight": asset.get("target_weight", 0),
-            "max_weight": asset.get("max_weight", 0),
-            "min_weight": asset.get("min_weight", 0),
-            "single_buy_ratio": asset.get("single_buy_ratio", 0),
-            "enabled": 1 if asset.get("enabled", True) else 0,
-            "enabled_for_signal": 1 if asset.get("enabled_for_signal", True) else 0,
-        }
+        params = _asset_to_params(asset)
         conn.execute(sql, params)
         count += 1
     return count
+
+
+def create_or_update_etf_asset(conn: sqlite3.Connection, asset: dict[str, Any]) -> int:
+    return upsert_etf_universe(conn, [asset])
+
+
+def get_etf_asset(conn: sqlite3.Connection, symbol: str) -> sqlite3.Row | None:
+    cur = conn.execute(
+        "SELECT * FROM etf_universe WHERE symbol = ?",
+        (str(symbol).strip().upper(),),
+    )
+    return cur.fetchone()
+
+
+def update_etf_asset(conn: sqlite3.Connection, symbol: str, fields: dict[str, Any]) -> None:
+    current = get_etf_asset(conn, symbol)
+    if current is None:
+        raise ValueError(f"标的不存在：{symbol}")
+
+    merged = dict(current)
+    merged.update(fields)
+    merged["symbol"] = str(symbol).strip().upper()
+    create_or_update_etf_asset(conn, merged)
+
+
+def disable_etf_asset(conn: sqlite3.Connection, symbol: str) -> None:
+    conn.execute(
+        """
+        UPDATE etf_universe
+        SET enabled = 0, updated_at = CURRENT_TIMESTAMP
+        WHERE symbol = ?
+        """,
+        (str(symbol).strip().upper(),),
+    )
+
+
+def list_signal_enabled_etfs(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM etf_universe
+        WHERE enabled = 1
+          AND enabled_for_signal = 1
+          AND symbol != 'CASH'
+          AND role != 'cash'
+        ORDER BY symbol
+        """
+    )
+    return cur.fetchall()
 
 
 def list_etf_universe(conn: sqlite3.Connection, enabled_only: bool = False) -> list[sqlite3.Row]:

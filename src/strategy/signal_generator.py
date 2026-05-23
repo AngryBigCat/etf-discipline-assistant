@@ -5,7 +5,7 @@ from typing import Any
 
 import sqlite3
 
-from src.config.settings import get_signal_assets, get_watch_only_assets
+from src.assets.queries import list_signal_assets, list_watch_only_assets
 from src.db.repository import (
     get_latest_indicators,
     get_latest_price_map,
@@ -95,7 +95,7 @@ def generate_signals(
     close_map = get_latest_price_map(conn)
 
     signals: list[StrategySignal] = []
-    for asset in get_signal_assets(settings):
+    for asset in list_signal_assets(conn):
         symbol = asset["symbol"]
         position = position_map.get(symbol, _default_position(symbol))
         indicator = indicator_map.get(symbol, {})
@@ -153,7 +153,7 @@ def generate_signals(
         "snapshot_date": overview.get("snapshot_date"),
         "account": account,
         "total_plan_amount": total_plan_amount,
-        "watch_only_assets": get_watch_only_assets(settings),
+        "watch_only_assets": list_watch_only_assets(conn),
     }
     return signals, context
 

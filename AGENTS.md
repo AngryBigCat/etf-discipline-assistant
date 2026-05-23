@@ -231,6 +231,7 @@ AI 层不得参与回测决策。
 - 任务中心展示分区（今日 / 风险 / 历史）与 badge 中文化
 - 配置编辑校验、备份与保存（`src/config/editor.py`）
 - 标的池同步到 `etf_universe`（`src/config/sync.py`），不得删除历史数据
+- 标的池数据库化：`src/assets/validator.py`、`src/db/repository.py` 增删改查与校验
 
 ### 工作流层（`src/workflows/`）
 
@@ -248,7 +249,7 @@ AI 层不得参与回测决策。
 
 负责：
 
-- 读取、校验、保存 `config.yaml`
+- 读取、校验、保存 `config.yaml`（portfolio / strategy / actions 等非标的池配置）
 - 保存前自动备份到 `backups/config/`
 - 在页面展示 AI 复盘配置状态（不含 API Key 明文）
 
@@ -262,8 +263,25 @@ AI 层不得参与回测决策。
 - 把参数配置表述为收益承诺
 - 物理删除历史行情、交易记录或持仓记录
 - 停用标的时删除 `daily_price` / `trade_log` / `holding_snapshot` 等历史数据
+- **将标的池日常编辑写回 `config.yaml` 的 `assets`**
 
 修改配置前必须备份；校验失败不得保存。停用标的只能隐藏未来使用，不得删除历史记录；新增标的不自动交易、不自动生成投资建议。
+
+### 标的池（`etf_universe` / `src/assets/`）
+
+负责：
+
+- 作为标的池唯一主数据源
+- 系统设置页新增 / 编辑 / 停用标的（`enabled=0`）
+- 校验逻辑（`src/assets/validator.py`）与仓库读写（`src/db/repository.py`）
+
+不得负责：
+
+- 物理删除历史行情、交易、持仓或策略信号
+- 根据新增标的自动生成投资建议或自动交易
+- 日常通过 `config.yaml` 覆盖数据库中用户已停用的标的（除非明确执行 `--force` 同步）
+
+`config.yaml` 中的 `assets` 仅用于初始化兼容（`scripts/sync_assets_from_config.py`），不是日常编辑源。
 
 ## UI 要求
 

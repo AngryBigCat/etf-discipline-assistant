@@ -1,21 +1,26 @@
 from __future__ import annotations
 
+import copy
 from datetime import date
 
 import streamlit as st
 
+from src.assets.queries import list_all_assets, row_to_asset
+from src.assets.validator import (
+    compute_implicit_cash_target_weight,
+    sum_etf_target_weights,
+    validate_asset,
+    validate_asset_pool,
+)
 from src.config.editor import (
     ConfigValidationError,
-    compute_implicit_cash_target_weight,
     format_ai_settings_display,
     load_editable_config,
     save_editable_config,
-    sum_etf_target_weights,
     validate_editable_config,
-    validate_new_asset,
 )
-from src.config.sync import sync_assets_to_etf_universe
-from src.db.connection import db_session
+from src.db.connection import db_session, get_connection
+from src.db.repository import create_or_update_etf_asset, disable_etf_asset, update_etf_asset
 from src.ui.labels import FIELD_LABELS, ROLE_LABELS, localize_role
 
 
@@ -27,6 +32,22 @@ def _ensure_draft_config() -> dict:
 
 def _reset_draft_config() -> None:
     st.session_state["settings_draft_config"] = load_editable_config()
+
+
+def _load_asset_drafts() -> list[dict]:
+    with get_connection() as conn:
+        return list_all_assets(conn, enabled_only=False)
+
+
+def _ensure_asset_drafts() -> list[dict]:
+    if "settings_asset_drafts" not in st.session_state:
+        st.session_state["settings_asset_drafts"] = _load_asset_drafts()
+    return st.session_state["settings_asset_drafts"]
+
+
+def _reload_asset_drafts() -> list[dict]:
+    st.session_state["settings_asset_drafts"] = _load_asset_drafts()
+    return st.session_state["settings_asset_drafts"]
 
 
 def _render_investment_plan(config: dict) -> None:
@@ -82,9 +103,30 @@ def _asset_status_label(asset: dict) -> str:
     return "启用" if asset.get("enabled", True) else "停用"
 
 
-def _render_add_asset_form(config: dict) -> None:
+def _collect_asset_from_expander(asset: dict, symbol: str, role_options: list[str]) -> dict:
+    current_role = str(asset.get("role") or role_options[0])
+    role_choices = role_options.copy()
+    if current_role not in role_choices:
+        role_choices = [current_role, *role_choices]
+
+    return {
+        "symbol": symbol,
+        "name": st.session_state.get(f"asset_name_{symbol}", asset.get("name") or ""),
+        "fund_code": st.session_state.get(f"asset_fund_code_{symbol}", asset.get("fund_code") or ""),
+        "exchange": st.session_state.get(f"asset_exchange_{symbol}", asset.get("exchange") or ""),
+        "role": st.session_state.get(f"asset_role_{symbol}", asset.get("role")),
+        "enabled": st.session_state.get(f"asset_enabled_{symbol}", asset.get("enabled", True)),
+        "enabled_for_signal": st.session_state.get(
+            f"asset_signal_{symbol}",
+            asset.get("enabled_for_signal", False),
+        ),
+        "target_weight": float(st.session_state.get(f"asset_target_{symbol}", asset.get("target_weight") or 0)),
+        "max_weight": float(st.session_state.get(f"asset_max_{symbol}", asset.get("max_weight") or 0)),
+    }
+
+
+def _render_add_asset_form(assets: list[dict]) -> None:
     st.markdown("#### 新增标的")
-    assets = config.setdefault("assets", [])
     role_options = list(ROLE_LABELS.keys())
     default_role = "satellite" if "satellite" in role_options else role_options[0]
 
@@ -126,7 +168,7 @@ def _render_add_asset_form(config: dict) -> None:
                 key="new_asset_max_weight",
             )
 
-        submitted = st.form_submit_button("添加到配置草稿", use_container_width=True)
+        submitted = st.form_submit_button("添加标的", use_container_width=True)
 
     if not submitted:
         return
@@ -143,33 +185,42 @@ def _render_add_asset_form(config: dict) -> None:
         "max_weight": float(new_max_pct) / 100.0,
     }
 
-    errors = validate_new_asset(draft_asset, assets)
-    if errors:
-        st.error("无法添加到配置草稿：")
-        for error in errors:
+    pool_errors = validate_asset_pool([*assets, draft_asset])
+    if pool_errors:
+        st.error("无法添加标的：")
+        for error in pool_errors:
             st.write(f"- {error}")
         return
 
     if not draft_asset["fund_code"]:
         st.warning("未填写基金代码，无法自动拉取行情，需要后续补全。")
 
-    assets.append(draft_asset)
-    st.session_state["settings_draft_config"] = config
-    st.success(f"已将 {draft_asset['symbol']} 添加到配置草稿，请点击「保存配置」写入 config.yaml。")
+    with db_session() as conn:
+        create_or_update_etf_asset(conn, draft_asset)
+
+    _reload_asset_drafts()
+    end_date = date.today().isoformat()
+    if draft_asset["fund_code"]:
+        st.warning(
+            f"新标的 {draft_asset['symbol']} 已写入数据库，但尚未补全历史行情。请运行：\n"
+            f"python scripts/backfill_prices.py --symbol {draft_asset['symbol']} "
+            f"--start 2021-01-01 --end {end_date}"
+        )
+    st.success(f"已将 {draft_asset['symbol']} 添加到标的池。")
 
 
-def _render_asset_pool(config: dict) -> None:
+def _render_asset_pool() -> None:
     st.subheader("ETF 标的池设置")
+    st.info("标的池数据已迁移到数据库；config.yaml 中的 assets 仅用于初始化兼容。")
     st.caption(
         "可新增标的或停用已有标的。停用只会使其从新任务、信号和默认选择中隐藏，"
         "不会删除历史行情、回测、交易或持仓记录。"
     )
 
-    _render_add_asset_form(config)
+    assets = _ensure_asset_drafts()
+    _render_add_asset_form(assets)
 
-    assets = config.setdefault("assets", [])
     role_options = list(ROLE_LABELS.keys())
-
     for index, asset in enumerate(assets):
         symbol = str(asset.get("symbol") or f"asset_{index}")
         status_label = _asset_status_label(asset)
@@ -180,30 +231,29 @@ def _render_asset_pool(config: dict) -> None:
             expanded=False,
             key=f"asset_expander_{symbol}_{int(is_enabled)}",
         ):
-            st.markdown(
-                f"**{FIELD_LABELS['symbol']}**：{symbol}  "
-                f"**{FIELD_LABELS['fund_code']}**：{asset.get('fund_code') or '—'}  "
-                f"**{FIELD_LABELS['exchange']}**：{asset.get('exchange') or '—'}"
-            )
+            st.markdown(f"**{FIELD_LABELS['symbol']}**：{symbol}")
 
-            asset["enabled"] = st.checkbox(
-                FIELD_LABELS["enabled"],
-                value=bool(asset.get("enabled", True)),
-                key=f"asset_enabled_{symbol}",
-                help="停用标的只会隐藏未来使用，不会删除历史数据。",
-            )
-
-            asset["name"] = st.text_input(
+            st.text_input(
                 FIELD_LABELS["name"],
                 value=str(asset.get("name") or ""),
                 key=f"asset_name_{symbol}",
+            )
+            st.text_input(
+                FIELD_LABELS["fund_code"],
+                value=str(asset.get("fund_code") or ""),
+                key=f"asset_fund_code_{symbol}",
+            )
+            st.text_input(
+                FIELD_LABELS["exchange"],
+                value=str(asset.get("exchange") or ""),
+                key=f"asset_exchange_{symbol}",
             )
 
             current_role = str(asset.get("role") or role_options[0])
             role_choices = role_options.copy()
             if current_role not in role_choices:
                 role_choices = [current_role, *role_choices]
-            asset["role"] = st.selectbox(
+            st.selectbox(
                 FIELD_LABELS["role"],
                 options=role_choices,
                 index=role_choices.index(current_role),
@@ -211,44 +261,79 @@ def _render_asset_pool(config: dict) -> None:
                 key=f"asset_role_{symbol}",
             )
 
-            asset["enabled_for_signal"] = st.checkbox(
+            st.checkbox(
+                FIELD_LABELS["enabled"],
+                value=bool(asset.get("enabled", True)),
+                key=f"asset_enabled_{symbol}",
+                help="停用标的只会隐藏未来使用，不会删除历史数据。",
+            )
+            st.checkbox(
                 FIELD_LABELS["enabled_for_signal"],
-                value=bool(asset.get("enabled_for_signal", True)),
+                value=bool(asset.get("enabled_for_signal", False)),
                 key=f"asset_signal_{symbol}",
             )
 
             col1, col2 = st.columns(2)
             with col1:
-                target_pct = float(asset.get("target_weight") or 0) * 100
-                asset["target_weight"] = st.number_input(
+                st.number_input(
                     FIELD_LABELS["target_weight"] + " (%)",
                     min_value=0.0,
                     max_value=100.0,
-                    value=target_pct,
+                    value=float(asset.get("target_weight") or 0) * 100,
                     step=1.0,
                     key=f"asset_target_{symbol}",
-                ) / 100.0
+                )
             with col2:
-                max_pct = float(asset.get("max_weight") or asset.get("target_weight") or 0) * 100
-                asset["max_weight"] = st.number_input(
+                st.number_input(
                     FIELD_LABELS["max_weight"] + " (%)",
                     min_value=0.0,
                     max_value=100.0,
-                    value=max_pct,
+                    value=float(asset.get("max_weight") or 0) * 100,
                     step=1.0,
                     key=f"asset_max_{symbol}",
-                ) / 100.0
+                )
+
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                if st.button("保存标的修改", key=f"save_asset_{symbol}", use_container_width=True):
+                    updated = _collect_asset_from_expander(asset, symbol, role_options)
+                    updated["target_weight"] = float(st.session_state[f"asset_target_{symbol}"]) / 100.0
+                    updated["max_weight"] = float(st.session_state[f"asset_max_{symbol}"]) / 100.0
+                    other_assets = [item for item in assets if item.get("symbol") != symbol]
+                    errors = validate_asset_pool([*other_assets, updated])
+                    if errors:
+                        st.error("标的校验未通过：")
+                        for error in errors:
+                            st.write(f"- {error}")
+                    else:
+                        with db_session() as conn:
+                            update_etf_asset(conn, symbol, updated)
+                        _reload_asset_drafts()
+                        st.success(f"{symbol} 已更新。")
+                        st.rerun()
+            with btn_col2:
+                if st.button("停用标的", key=f"disable_asset_{symbol}", use_container_width=True):
+                    with db_session() as conn:
+                        disable_etf_asset(conn, symbol)
+                    _reload_asset_drafts()
+                    st.success(f"{symbol} 已停用。")
+                    st.rerun()
 
 
-def _render_position_rules(config: dict) -> None:
+def _render_position_rules(assets: list[dict]) -> None:
     st.subheader("仓位规则设置")
     st.warning(
         "目标仓位和最大仓位只用于提醒和规则判断，不会自动调仓，也不会自动修改真实持仓。"
     )
 
-    assets = config.get("assets") or []
-    etf_total = sum_etf_target_weights(assets)
-    cash_target = compute_implicit_cash_target_weight(assets)
+    normalized_assets = []
+    for asset in assets:
+        item = copy.deepcopy(asset)
+        item["target_weight"] = float(item.get("target_weight") or 0)
+        normalized_assets.append(item)
+
+    etf_total = sum_etf_target_weights(normalized_assets)
+    cash_target = compute_implicit_cash_target_weight(normalized_assets)
 
     st.metric("ETF 目标仓位合计", f"{etf_total * 100:.1f}%")
     if cash_target is not None:
@@ -353,12 +438,13 @@ def main() -> None:
     )
 
     config = _ensure_draft_config()
+    assets = _ensure_asset_drafts()
 
     _render_investment_plan(config)
     st.divider()
-    _render_asset_pool(config)
+    _render_asset_pool()
     st.divider()
-    _render_position_rules(config)
+    _render_position_rules(assets)
     st.divider()
     _render_strategy_params(config)
     st.divider()
@@ -368,7 +454,9 @@ def main() -> None:
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("校验配置", use_container_width=True):
-            errors = validate_editable_config(config)
+            config_errors = validate_editable_config(config)
+            asset_errors = validate_asset_pool(_load_asset_drafts())
+            errors = config_errors + asset_errors
             if errors:
                 st.error("配置校验未通过：")
                 for error in errors:
@@ -385,47 +473,21 @@ def main() -> None:
                     st.write(f"- {error}")
             else:
                 try:
-                    symbols_before_save = {
-                        str(asset.get("symbol") or "").strip().upper()
-                        for asset in load_editable_config().get("assets", [])
-                    }
                     backup_path = save_editable_config(config)
-                    with db_session() as conn:
-                        sync_result = sync_assets_to_etf_universe(conn, config)
-
-                    st.success("配置已保存。")
+                    st.success("配置已保存（不含标的池 assets）。")
                     st.info(f"备份文件：{backup_path}")
-                    st.success(f"已同步 {sync_result['synced_count']} 个标的到标的池。")
-
-                    end_date = date.today().isoformat()
-                    for symbol in sync_result.get("new_symbols_with_fund_code", []):
-                        st.warning(
-                            f"新标的 {symbol} 已加入配置，但尚未补全历史行情。请运行：\n"
-                            f"python scripts/backfill_prices.py --symbol {symbol} "
-                            f"--start 2021-01-01 --end {end_date}"
-                        )
-                    new_without_fund = [
-                        symbol
-                        for symbol in sync_result.get("new_symbols", [])
-                        if symbol not in sync_result.get("new_symbols_with_fund_code", [])
-                        and symbol not in symbols_before_save
-                    ]
-                    if new_without_fund:
-                        st.info(
-                            "部分新标的未填写基金代码，无法自动拉取行情；"
-                            "补全 fund_code 后请再保存并运行 backfill_prices.py。"
-                        )
-
                     st.warning("请刷新页面或重新运行相关任务，使新配置生效。")
                     _reset_draft_config()
+                    _reload_asset_drafts()
                 except ConfigValidationError as exc:
                     st.error("配置校验未通过，未保存：")
                     for error in exc.errors:
                         st.write(f"- {error}")
 
     with col3:
-        if st.button("重新加载配置", use_container_width=True):
+        if st.button("重新加载", use_container_width=True):
             _reset_draft_config()
+            _reload_asset_drafts()
             st.rerun()
 
 

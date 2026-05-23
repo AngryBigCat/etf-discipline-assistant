@@ -5,7 +5,8 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-from src.config.settings import get_watch_only_assets, load_settings
+from src.config.settings import load_settings
+from src.assets.queries import list_watch_only_assets
 from src.db.connection import db_session, get_connection
 from src.db.repository import get_latest_price_map, get_latest_strategy_signals, get_portfolio_overview
 from src.strategy.rule_engine import calc_available_cash
@@ -141,9 +142,8 @@ def render() -> None:
     st.caption("基于最新行情、持仓与 ETF 配置生成纪律信号")
 
     settings = load_settings()
-    watch_only_assets = get_watch_only_assets(settings)
-
     with get_connection() as conn:
+        watch_only_assets = list_watch_only_assets(conn)
         overview = get_portfolio_overview(conn, settings)
         price_map = get_latest_price_map(conn)
 

@@ -31,7 +31,8 @@ def render() -> None:
     st.caption("记录实际交易行为，用于复盘投资纪律")
 
     settings = load_settings()
-    assets = get_enabled_portfolio_assets(settings)
+    with get_connection() as conn:
+        assets = get_enabled_portfolio_assets(conn)
     asset_options = {asset["symbol"]: asset["name"] for asset in assets}
 
     st.subheader("手动新增交易")

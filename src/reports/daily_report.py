@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.config.settings import get_watch_only_assets
+from src.assets.queries import list_watch_only_assets
 from src.db.repository import (
     get_latest_strategy_signal_date,
     get_latest_strategy_signals,
@@ -82,7 +82,7 @@ def collect_daily_context(
     account_valid = bool(overview.get("account", {}).get("valid"))
     signals = [dict(row) for row in get_latest_strategy_signals(conn)]
     signal_date = get_latest_strategy_signal_date(conn)
-    watch_only = get_watch_only_assets(settings)
+    watch_only = list_watch_only_assets(conn)
     trade_rows = get_trade_logs(conn, start_date=report_date, end_date=report_date)
     day_trade_stats = summarize_day_trades(trade_rows)
 

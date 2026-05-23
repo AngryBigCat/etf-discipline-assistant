@@ -29,7 +29,8 @@ def render() -> None:
     st.caption("手动录入现金与 ETF 持仓，保存为当日快照")
 
     settings = load_settings()
-    assets = get_enabled_portfolio_assets(settings)
+    with get_connection() as conn:
+        assets = get_enabled_portfolio_assets(conn)
 
     if not assets:
         st.warning("没有可录入的 ETF 标的")

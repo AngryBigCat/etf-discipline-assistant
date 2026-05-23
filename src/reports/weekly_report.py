@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.config.settings import get_watch_only_assets
+from src.assets.queries import list_watch_only_assets
 from src.db.repository import (
     get_latest_indicators,
     get_latest_strategy_signals,
@@ -37,7 +37,7 @@ def collect_weekly_context(
     account_valid = bool(overview.get("account", {}).get("valid"))
     signals = [dict(row) for row in get_latest_strategy_signals(conn)]
     trade_summary = get_trade_summary(conn, start_date=week_start, end_date=week_end)
-    watch_only = get_watch_only_assets(settings)
+    watch_only = list_watch_only_assets(conn)
     indicators_df = get_latest_indicators(conn, enabled_only=True)
     high_volatility_symbols: list[str] = []
     if not indicators_df.empty:

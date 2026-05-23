@@ -183,6 +183,15 @@
 - 新增标的且填写 `fund_code` 后，页面提示运行 `backfill_prices.py` 补全历史行情（**不自动拉行情**）
 - **新增标的不自动交易，不自动生成投资建议**
 
+### 阶段 11.2：标的池数据库化
+
+- **`etf_universe` 为标的池唯一主数据源**；系统设置页新增 / 编辑 / 停用标的直接读写数据库
+- `config.yaml` 中的 `assets` **仅用于初始化兼容**（`scripts/sync_assets_from_config.py` / `seed_data.py`）
+- 保存系统配置（`save_editable_config`）**不再写入或覆盖** `config.yaml` 的 `assets`，也不会同步覆盖 `etf_universe`
+- 校验逻辑位于 `src/assets/validator.py`；仓库操作位于 `src/db/repository.py`
+- 行情更新、策略信号、任务中心、回测选择、持仓录入等优先从 `etf_universe` 读取
+- **停用标的不删除历史行情 / 交易 / 持仓 / 策略信号**
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -211,6 +220,7 @@ pip install -r requirements.txt
 
 python scripts/init_db.py
 python scripts/seed_data.py
+python scripts/sync_assets_from_config.py
 python scripts/daily_update.py
 python scripts/generate_signals.py
 python scripts/generate_daily_report.py
@@ -259,7 +269,8 @@ python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --c
 
 说明：
 
-- 配置中心仅用于维护纪律参数，**不会自动交易**，也不会修改持仓快照、交易日志或策略信号
+- **`etf_universe` 是标的池主数据源**；`config.yaml` 的 `assets` 仅用于首次初始化（`scripts/sync_assets_from_config.py`）
+- 系统设置页的标的池增删改直接写入数据库，**不会写回** `config.yaml` 的 `assets`
 - API Key 仅通过 `.env` 配置；系统设置页只显示「已配置 / 未配置」，**不会展示 API Key 明文**
 
 可选环境变量在 `.env`（可复制 `.env.example` 后修改，**不要提交 `.env` 到 Git**）：

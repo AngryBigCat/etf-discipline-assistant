@@ -115,15 +115,8 @@ def memory_conn():
     return conn
 
 
-def test_get_enabled_portfolio_assets_excludes_disabled():
-    settings = {
-        "assets": [
-            {"symbol": "A500", "name": "A500", "enabled": True},
-            {"symbol": "HIDDEN", "name": "隐藏", "enabled": False},
-            {"symbol": "CASH", "name": "现金", "enabled": True},
-        ]
-    }
-    assets = get_enabled_portfolio_assets(settings)
+def test_get_enabled_portfolio_assets_excludes_disabled(memory_conn):
+    assets = get_enabled_portfolio_assets(memory_conn)
     symbols = {a["symbol"] for a in assets}
     assert "A500" in symbols
     assert "HIDDEN" not in symbols

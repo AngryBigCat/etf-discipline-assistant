@@ -6,7 +6,7 @@ from typing import Any
 from loguru import logger
 
 from src.collectors.akshare_collector import AkshareCollector
-from src.db.repository import list_priceable_etfs, upsert_daily_prices
+from src.db.repository import get_etf_asset, list_priceable_etfs, upsert_daily_prices
 from src.utils.network import build_network_hint, is_connection_error
 
 
@@ -20,22 +20,15 @@ class BackfillResult:
     message: str
 
 
-def _find_asset(settings: dict[str, Any], symbol: str) -> dict[str, Any] | None:
-    for asset in settings.get("assets", []):
-        if asset.get("symbol") == symbol:
-            return asset
-    return None
-
-
-def _resolve_fund_code(settings: dict[str, Any], symbol: str) -> str:
-    asset = _find_asset(settings, symbol)
-    if asset is None:
-        raise ValueError(f"未在 config.yaml 中找到标的：{symbol}")
-    fund_code = (asset.get("fund_code") or "").strip()
+def _resolve_fund_code(conn, symbol: str) -> str:
+    row = get_etf_asset(conn, symbol)
+    if row is None:
+        raise ValueError(f"未在标的池中找到：{symbol}")
+    if not int(row["enabled"]):
+        raise ValueError(f"标的 {symbol} 未启用")
+    fund_code = (row["fund_code"] or "").strip()
     if not fund_code:
         raise ValueError(f"标的 {symbol} 缺少 fund_code 配置")
-    if not asset.get("enabled", True):
-        raise ValueError(f"标的 {symbol} 未启用")
     return fund_code
 
 
@@ -47,7 +40,7 @@ def backfill_symbol_prices(
     end_date: str,
 ) -> BackfillResult:
     try:
-        fund_code = _resolve_fund_code(settings, symbol)
+        fund_code = _resolve_fund_code(conn, symbol)
     except ValueError as exc:
         return BackfillResult(
             symbol=symbol,
@@ -104,19 +97,6 @@ def backfill_all_prices(
 ) -> list[BackfillResult]:
     results: list[BackfillResult] = []
     etfs = list_priceable_etfs(conn)
-    if not etfs:
-        for asset in settings.get("assets", []):
-            if not asset.get("enabled", True) or asset.get("symbol") == "CASH":
-                continue
-            symbol = asset.get("symbol")
-            if symbol:
-                result = backfill_symbol_prices(conn, settings, symbol, start_date, end_date)
-                results.append(result)
-                if result.success:
-                    logger.info("{}: {}", symbol, result.message)
-                else:
-                    logger.warning("{}: {}", symbol, result.message)
-        return results
 
     for etf in etfs:
         symbol = etf["symbol"]
