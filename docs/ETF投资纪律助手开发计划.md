@@ -40,7 +40,8 @@
 | 阶段三：指标 + 数据看板 | 已完成 | indicator_service，pages/dashboard.py |
 | 阶段四：持仓与仓位 | 已完成 | 持仓录入、仓位管理、signal_status / risk_status 分离 |
 | 阶段五：策略规则 | 已完成 | score_engine / rule_engine / signal_generator，策略信号页 |
-| 阶段六及以后 | 未开始 | 交易日志、日报/周报、AI 等 |
+| 阶段六：交易日志 | 已完成 | discipline_checker / trade_log 业务层、交易日志页、信号页操作 |
+| 阶段七及以后 | 未开始 | 日报/周报、看板整合、AI 等 |
 
 **当前 Streamlit 页面**（`app.py` + `st.navigation`）：
 
@@ -49,6 +50,7 @@
 2. 持仓录入   — pages/holdings_entry.py
 3. 仓位管理   — pages/position_mgmt.py
 4. 策略信号   — pages/strategy_signals.py
+5. 交易日志   — pages/trade_log.py
 ```
 
 **当前 CLI 脚本**：
@@ -154,7 +156,8 @@ etf-discipline-assistant/
 │   ├── dashboard.py           # 数据看板
 │   ├── holdings_entry.py      # 持仓录入
 │   ├── position_mgmt.py       # 仓位管理
-│   └── strategy_signals.py    # 策略信号（阶段五）
+│   ├── strategy_signals.py    # 策略信号（阶段五）
+│   └── trade_log.py           # 交易日志（阶段六）
 │
 ├── data/
 │   ├── etf_assistant.db
@@ -213,6 +216,11 @@ etf-discipline-assistant/
 │   │   ├── rule_engine.py
 │   │   └── signal_generator.py
 │   │
+│   ├── trading/               # 阶段六
+│   │   ├── __init__.py
+│   │   ├── discipline_checker.py
+│   │   └── trade_log.py
+│   │
 │   ├── reports/               # 待实现
 │   │   ├── __init__.py
 │   │   ├── daily_report.py
@@ -236,7 +244,9 @@ etf-discipline-assistant/
     ├── test_ui_labels.py
     ├── test_score_engine.py
     ├── test_signal_generator.py
-    └── test_suggested_amount.py
+    ├── test_suggested_amount.py
+    ├── test_discipline_checker.py
+    └── test_trade_log.py
 ```
 
 ---
@@ -345,7 +355,7 @@ cash_position = cash_value / current_account_value
 
 ## 5.8 第一版实现范围（分阶段交付）
 
-项目按阶段交付，**阶段 1-5 已完成**，阶段 6 及以后待启动：
+项目按阶段交付，**阶段 1-6 已完成**，阶段 7 及以后待启动：
 
 ```text
 阶段 1-3（已完成）：
@@ -366,9 +376,16 @@ cash_position = cash_value / current_account_value
   - 策略信号页（pages/strategy_signals.py）
   - review_status：generated / reviewed / ignored
 
+阶段 6（已完成）：
+  - discipline_checker / trade_log 业务层
+  - trade_log 扩展 suggested_amount / deviation_amount / execution_status
+  - 交易日志页（pages/trade_log.py）：手动录入、最近记录、纪律统计
+  - 策略信号页：记录买入 / 标记已查看 / 标记忽略；review_status = executed
+  - pytest：test_discipline_checker / test_trade_log
+
 待启动：
-  - 阶段六：交易日志、完整看板整合
-  - 阶段七～九：日报/周报、AI 复盘
+  - 阶段七：日报/周复盘模板、看板页面整合
+  - 阶段八：AI 复盘
 ```
 
 ---
@@ -1067,7 +1084,7 @@ streamlit run app.py
 
 # 13. Streamlit 页面设计
 
-## 13.0 当前已实现页面（阶段 1-5）
+## 13.0 当前已实现页面（阶段 1-6）
 
 使用 `app.py` + `st.navigation` 显式注册页面（ASCII 文件名，避免中文路径导航问题）：
 
@@ -1076,7 +1093,8 @@ streamlit run app.py
 | 数据看板 | pages/dashboard.py | 3 | 标的池、最新行情、基础指标（中文表头） |
 | 持仓录入 | pages/holdings_entry.py | 4 | 手动录入现金余额与 ETF 持仓，保存快照 |
 | 仓位管理 | pages/position_mgmt.py | 4 | 账户总览、仓位明细、分级风险提示 |
-| 策略信号 | pages/strategy_signals.py | 5 | 生成纪律信号、操作建议、建议金额、审核状态 |
+| 策略信号 | pages/strategy_signals.py | 5 | 生成纪律信号、操作建议、建议金额；记录买入 / 已查看 / 忽略 |
+| 交易日志 | pages/trade_log.py | 6 | 手动录入交易、最近记录、可配置区间纪律统计 |
 
 **UI 中文化**：用户可见文案统一经 `src/ui/labels.py` 翻译；数据库字段名与代码内部变量名保持英文。
 
@@ -1087,15 +1105,14 @@ streamlit run app.py
 
 ## 13.0.1 阶段 1-3 最简首页（历史说明）
 
-第一版 Streamlit 曾仅实现最简首页，用于验证数据管道。现已扩展为上述四页，原最简首页能力并入「数据看板」。
+第一版 Streamlit 曾仅实现最简首页，用于验证数据管道。现已扩展为上述五页，原最简首页能力并入「数据看板」。
 
-## 13.0.2 待实现页面（阶段六及以后）
+## 13.0.2 待实现页面（阶段七及以后）
 
 ```text
-1. 交易日志
-2. 周复盘
-3. 系统配置查看
-4. review_status = executed（需交易日志模块完成后）
+1. 周复盘
+2. 系统配置查看
+3. 今日建议首页整合（可与策略信号页合并或独立）
 ```
 
 ## 13.1 首页：今日操作建议
@@ -1187,18 +1204,19 @@ MA250
 
 ---
 
-## 13.4 交易日志页
+## 13.4 交易日志页 ✅ 已实现
 
 功能：
 
 ```text
-1. 新增交易记录
-2. 查看历史交易
-3. 关联当日 strategy_signal（signal_id）
-4. 标记是否符合规则
+1. 新增交易记录（手动表单）
+2. 查看最近交易记录（默认 50 条）
+3. 关联 strategy_signal（signal_id；策略信号页「记录买入 / 标记忽略」自动写入）
+4. 自动/手动标记是否符合规则（discipline_checker）
 5. 记录交易情绪
-6. 记录交易理由
-7. 更新关联信号的 review_status（executed / ignored）
+6. 记录交易理由与备注
+7. 更新关联信号的 review_status（executed / ignored / reviewed）
+8. 可配置日期区间的纪律统计（默认近 30 天）
 ```
 
 字段：
@@ -1543,7 +1561,7 @@ def calculate_suggested_amount(asset, action, position, portfolio, config):
 
 # 16. 开发阶段规划
 
-> **当前进度：阶段一至阶段五已完成（2026-05-23）。** 下一步为阶段六（交易日志 + 看板整合）。
+> **当前进度：阶段一至阶段六已完成（2026-05-23）。** 下一步为阶段七（日报/周复盘）及看板整合。
 
 ## 阶段一：项目初始化 ✅ 已完成
 
@@ -1712,61 +1730,62 @@ pytest：test_score_engine / test_signal_generator / test_suggested_amount
 
 ---
 
-## 阶段六：Streamlit 完整看板 ⏳ 待开始
+## 阶段六：交易日志模块 ✅ 已完成
 
-目标：在现有四页基础上，扩展交易日志与看板整合。
-
-页面：
-
-```text
-1. 今日建议（可与策略信号页整合或独立）
-2. ETF看板（数据看板已部分覆盖）
-3. 仓位管理（已实现）
-4. 交易日志（待实现）
-5. 周复盘（待实现）
-6. 系统配置查看
-7. review_status = executed（需交易日志完成后）
-```
-
-验收标准：
-
-```text
-运行 streamlit run app.py 后，页面可正常打开。
-用户能查看今日建议、ETF指标、仓位状态、交易记录。
-```
-
----
-
-## 阶段七：交易日志模块 ⏳ 待开始
-
-目标：记录交易行为，支持后续复盘。
+目标：记录交易行为，支持 signal 关联与纪律复盘统计。
 
 任务：
 
 ```text
-1. 实现新增交易记录
-2. 实现交易记录查询
-3. 支持 signal_id 关联 strategy_signal
-4. 支持情绪字段
-5. 支持是否符合规则字段
-6. 支持按周统计交易纪律
-7. 交易完成后可更新 signal.review_status
+1. trade_log 表扩展 suggested_amount / deviation_amount / execution_status（含 schema 迁移）
+2. 实现 discipline_checker.py（120% 阈值、stop_buy/hold 违规、ignore/manual 分支）
+3. 实现 trade_log.py 业务层（TradeLogInput、create_buy_from_signal、create_ignore_from_signal、create_manual_trade）
+4. repository 交易 CRUD / 最近记录 / 区间汇总
+5. pages/trade_log.py：手动录入、最近记录表格、纪律统计
+6. pages/strategy_signals.py：记录买入 / 标记已查看 / 标记忽略
+7. review_status = executed 流转（买入记录后更新关联 signal）
+8. labels.py 扩展交易动作 / 情绪 / 执行状态中文化
+9. pytest：test_discipline_checker / test_trade_log
+```
+
+**纪律校验摘要**：
+
+```text
+execution_status：
+  - manual：无 signal 关联的手动交易
+  - matched_signal：金额在建议 120% 内，或 hold/ignore 合规
+  - deviated：买入超建议 120%，或违反 stop_buy
+  - ignored：用户标记忽略信号
+  - recorded：默认占位
+
+本阶段不自动更新 holding_snapshot，不接入券商。
 ```
 
 验收标准：
 
 ```text
-用户能手动添加交易记录。
-系统能统计本周不符合规则的交易数量。
+用户可在交易日志页手动添加交易记录。
+用户可在策略信号页对单条信号记录买入或忽略，并标记已查看。
+trade_log 可关联 signal_id，并持久化 suggested_amount / deviation_amount / execution_status。
+买入后关联 signal 的 review_status 可更新为 executed。
+交易日志页可展示最近记录与区间纪律统计（符合规则比例、追涨/恐慌次数等）。
+pytest 53 用例通过。
 ```
 
 ---
 
-## 阶段八：日报与周报模块 ⏳ 待开始
+## 阶段七：日报与周报模块 ⏳ 待开始
 
-目标：生成自然语言报告。
+目标：生成自然语言报告（第一版先用模板，不接 AI）。
 
-第一版先用模板生成，不接 AI。
+页面整合（可与本阶段并行）：
+
+```text
+1. 今日建议（可与策略信号页整合或独立）
+2. ETF看板（数据看板已部分覆盖）
+3. 周复盘页
+4. 系统配置查看
+```
 
 日报结构：
 
@@ -1798,7 +1817,7 @@ daily_report 表能保存日报。
 
 ---
 
-## 阶段九：AI 预留接口
+## 阶段八：AI 预留接口
 
 目标：预留大模型生成自然语言复盘能力。
 
@@ -1889,14 +1908,14 @@ streamlit run app.py
 阶段 1-3 验收通过后，再请求继续阶段四（持仓）及以后。
 ```
 
-## 19.2 当前阶段提示词（阶段六及以后）
+## 19.2 当前阶段提示词（阶段七及以后）
 
 继续开发时请遵守 v1 冻结口径，并基于已有模块扩展：
 
 ```text
 请根据 docs/ETF投资纪律助手开发计划.md 继续开发。
 
-当前已完成：阶段 1-5（数据管道、持仓、仓位、策略信号、UI 中文化）。
+当前已完成：阶段 1-6（数据管道、持仓、仓位、策略信号、交易日志、UI 中文化）。
 请勿修改数据库字段名、持仓录入与仓位管理核心逻辑。
 
 冻结口径（必须遵守）：
@@ -1906,15 +1925,15 @@ streamlit run app.py
 4. volatility_score 固定为 0；volatility_20d 只展示。
 5. enabled_for_signal=false 不生成 strategy_signal；watch_only 仍做风控检查。
 6. 单 ETF 超限口径：market_value > max_allowed_value（与仓位管理一致）。
-7. strategy_signal 含 review_status；trade_log 含 signal_id（阶段七实现）。
+7. strategy_signal 含 review_status（含 executed）；trade_log 含 signal_id 与 execution_status。
 8. 用户可见文案中文化，内部字段名不变。
+9. 交易日志不自动更新持仓，不接入券商。
 
-阶段六起优先实现：
-1. 交易日志 CRUD 与 Streamlit 页面
-2. signal_id 关联 strategy_signal
-3. review_status = executed 流转
-4. 日报/周复盘模板（阶段八）
-5. 为核心逻辑补充 pytest
+阶段七起优先实现：
+1. 日报/周复盘模板（scripts/weekly_review.py、reports 模块）
+2. 周复盘 Streamlit 页面
+3. 今日建议 / 看板页面整合
+4. 为核心逻辑补充 pytest
 
 验收命令：
 
@@ -1951,11 +1970,24 @@ streamlit run app.py
 4. 策略信号页可生成纪律分数、操作建议、建议金额、原因说明
 5. enabled_for_signal=false 不写入 strategy_signal
 6. 超仓 / 总仓位>80% / 科创50>=20% 时 stop_buy
-7. UI 中文化；pytest 38+ 用例通过
+7. UI 中文化；pytest 38+ 用例通过（截至阶段五）
 8. scripts/generate_signals.py 可 CLI 生成信号
 ```
 
-## 完整第一版验收（阶段六至八完成后）⏳ 进行中
+## 阶段 6 验收 ✅ 已通过
+
+```text
+1. 交易日志页可手动录入交易，展示最近记录与区间纪律统计
+2. 策略信号页可对单条信号记录买入、标记已查看、标记忽略
+3. trade_log 关联 signal_id，含 suggested_amount / deviation_amount / execution_status
+4. discipline_checker 校验 120% 阈值与 stop_buy/hold 违规
+5. 买入后关联 signal 的 review_status 可更新为 executed
+6. labels.py 扩展交易动作 / 情绪 / 执行状态中文化
+7. pytest 53 用例通过（含 test_discipline_checker / test_trade_log）
+8. 本阶段不自动更新持仓
+```
+
+## 完整第一版验收（阶段七至八完成后）⏳ 进行中
 
 ```text
 1. 能启动 Streamlit 完整看板
@@ -1963,9 +1995,9 @@ streamlit run app.py
 3. 仓位基于 current_account_value 计算，total_plan_amount 单独展示
 4. 能生成纪律分数与操作建议（volatility_score=0）
 5. 跨境观察标的不生成主动买入金额
-6. strategy_signal 含 review_status；trade_log 可关联 signal_id
+6. strategy_signal 含 review_status（含 executed）；trade_log 可关联 signal_id
 7. 科创50接近上限、总仓位过高、短期涨幅过大时有纪律提示
-8. 能记录交易日志并生成简单日报/周复盘
+8. 能记录交易日志；日报/周复盘模板待阶段七实现
 ```
 
 ---
@@ -1981,6 +2013,8 @@ MVP 不追求复杂，只追求每天能回答三个问题：
 ```
 
 **阶段五完成后**，上述问题已由「策略信号」页与 `scripts/generate_signals.py` 回答：纪律分数 → 操作建议 → 建议金额，并附中文原因说明。
+
+**阶段六完成后**，「交易日志」页与策略信号页操作可回答：实际是否按建议执行、偏离多少、近期是否符合纪律。
 
 示例输出：
 
@@ -2053,22 +2087,22 @@ MVP 不追求复杂，只追求每天能回答三个问题：
 按照重要程度排序（**2026-05-23 更新**）：
 
 ```text
-P0（阶段 1-5，已完成 ✅）：
-- 数据库初始化（含 fund_code / review_status / account_snapshot）
+P0（阶段 1-6，已完成 ✅）：
+- 数据库初始化（含 fund_code / review_status / account_snapshot / trade_log 扩展字段）
 - ETF 标的池（symbol ↔ fund_code 映射）
 - 行情数据（AKShare + mock）
 - 指标计算（含历史不足降级）
-- Streamlit 四页：数据看板 / 持仓录入 / 仓位管理 / 策略信号
+- Streamlit 五页：数据看板 / 持仓录入 / 仓位管理 / 策略信号 / 交易日志
 - 手动录入现金/持仓 + 仓位风控（signal_status / risk_status）
-- 策略打分与 discipline 信号（volatility_score=0、review_status）
+- 策略打分与 discipline 信号（volatility_score=0、review_status 含 executed）
+- 交易日志与纪律校验（signal_id 关联、execution_status、区间统计）
 - UI 中文化（src/ui/labels.py）
-- pytest 覆盖指标、仓位、策略、建议金额
+- pytest 覆盖指标、仓位、策略、建议金额、交易日志（53 用例）
 
-P1（阶段 6-8，当前重点 ⏳）：
-- 交易日志（signal_id 关联）
-- review_status = executed 流转
+P1（阶段 7-8，当前重点 ⏳）：
 - 日报 / 周复盘模板
-- 看板页面整合
+- 周复盘 Streamlit 页面
+- 看板页面整合（今日建议等）
 
 P2：
 - AI 复盘
@@ -2083,4 +2117,4 @@ P3：
 
 ---
 
-这份文档已纳入 v1 冻结口径。**阶段一至阶段五已完成**；下一步为阶段六（交易日志）及日报/周报，避免在未验收的数据管道上叠加不可维护功能。
+这份文档已纳入 v1 冻结口径。**阶段一至阶段六已完成**；下一步为阶段七（日报/周复盘）及看板整合，避免在未验收的数据管道上叠加不可维护功能。
