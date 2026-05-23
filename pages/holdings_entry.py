@@ -45,7 +45,7 @@ def render() -> None:
         st.info(f"已加载 {snapshot_date} 的已有快照，可修改后重新保存。")
 
     cash_value = st.number_input(
-        "现金余额 (cash_value)",
+        "现金余额",
         min_value=0.0,
         value=float(existing_cash),
         step=1000.0,
@@ -67,7 +67,7 @@ def render() -> None:
                 st.metric("最新价", f"{latest_price:.4f}" if latest_price else "—")
             with col2:
                 quantity = st.number_input(
-                    "数量 (quantity)",
+                    "持仓数量",
                     min_value=0.0,
                     value=float(existing.get("quantity") or 0),
                     step=100.0,
@@ -75,7 +75,7 @@ def render() -> None:
                 )
             with col3:
                 cost = st.number_input(
-                    "成本 (cost)",
+                    "持仓成本",
                     min_value=0.0,
                     value=float(existing.get("cost") or 0),
                     step=1000.0,
@@ -89,7 +89,7 @@ def render() -> None:
             manual_market_value = None
             if latest_price is None:
                 manual_market_value = st.number_input(
-                    "手动市值 (无最新价时使用)",
+                    "手动市值",
                     min_value=0.0,
                     value=manual_default,
                     step=1000.0,

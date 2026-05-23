@@ -5,11 +5,20 @@ from typing import Any
 
 from src.portfolio.position import calc_max_allowed_value
 
-STATUS_UNDERWEIGHT = "underweight"
-STATUS_NORMAL = "normal"
-STATUS_OVERWEIGHT = "overweight"
-STATUS_EXCEED_MAX = "exceed_max"
-STATUS_WATCH_ONLY = "watch_only"
+SIGNAL_STATUS_ACTIVE = "active"
+SIGNAL_STATUS_WATCH_ONLY = "watch_only"
+
+RISK_STATUS_UNDERWEIGHT = "underweight"
+RISK_STATUS_NORMAL = "normal"
+RISK_STATUS_OVERWEIGHT = "overweight"
+RISK_STATUS_EXCEED_MAX = "exceed_max"
+
+# Backward-compatible aliases
+STATUS_UNDERWEIGHT = RISK_STATUS_UNDERWEIGHT
+STATUS_NORMAL = RISK_STATUS_NORMAL
+STATUS_OVERWEIGHT = RISK_STATUS_OVERWEIGHT
+STATUS_EXCEED_MAX = RISK_STATUS_EXCEED_MAX
+STATUS_WATCH_ONLY = SIGNAL_STATUS_WATCH_ONLY
 
 
 @dataclass
@@ -25,7 +34,8 @@ class PositionRow:
     max_weight: float
     max_allowed_value: float
     deviation: float
-    status: str
+    signal_status: str
+    risk_status: str
     enabled_for_signal: bool
     quantity: float = 0.0
     latest_price: float | None = None
@@ -35,22 +45,25 @@ def calc_deviation(weight: float, target_weight: float) -> float:
     return float(weight or 0) - float(target_weight or 0)
 
 
-def classify_position(
+def classify_signal_status(enabled_for_signal: bool) -> str:
+    if not enabled_for_signal:
+        return SIGNAL_STATUS_WATCH_ONLY
+    return SIGNAL_STATUS_ACTIVE
+
+
+def classify_risk_status(
     weight: float,
     target_weight: float,
     market_value: float,
     max_allowed_value: float,
-    enabled_for_signal: bool,
 ) -> str:
-    if not enabled_for_signal:
-        return STATUS_WATCH_ONLY
     if market_value > max_allowed_value:
-        return STATUS_EXCEED_MAX
+        return RISK_STATUS_EXCEED_MAX
     if weight > target_weight:
-        return STATUS_OVERWEIGHT
+        return RISK_STATUS_OVERWEIGHT
     if weight < target_weight:
-        return STATUS_UNDERWEIGHT
-    return STATUS_NORMAL
+        return RISK_STATUS_UNDERWEIGHT
+    return RISK_STATUS_NORMAL
 
 
 def build_position_rows(
@@ -71,12 +84,12 @@ def build_position_rows(
         market_value = float(holding.get("market_value") or 0)
         weight = float(holding.get("weight") or 0)
         max_allowed = calc_max_allowed_value(total_plan_amount, current_account_value, max_weight)
-        status = classify_position(
+        signal_status = classify_signal_status(enabled_for_signal)
+        risk_status = classify_risk_status(
             weight=weight,
             target_weight=target_weight,
             market_value=market_value,
             max_allowed_value=max_allowed,
-            enabled_for_signal=enabled_for_signal,
         )
         rows.append(
             PositionRow(
@@ -91,7 +104,8 @@ def build_position_rows(
                 max_weight=max_weight,
                 max_allowed_value=max_allowed,
                 deviation=calc_deviation(weight, target_weight),
-                status=status,
+                signal_status=signal_status,
+                risk_status=risk_status,
                 enabled_for_signal=enabled_for_signal,
                 quantity=float(holding.get("quantity") or 0),
                 latest_price=holding.get("latest_price"),
@@ -103,10 +117,18 @@ def build_position_rows(
 def build_alerts(position_rows: list[PositionRow]) -> list[str]:
     alerts: list[str] = []
     for row in position_rows:
-        if row.status == STATUS_EXCEED_MAX:
-            alerts.append(f"{row.symbol} 超过 max_weight 上限（当前 {row.market_value:.2f} > 允许 {row.max_allowed_value:.2f}）")
-        elif row.status == STATUS_OVERWEIGHT:
-            alerts.append(f"{row.symbol} 高于目标仓位（偏离 {row.deviation * 100:.1f}%）")
-        elif row.status == STATUS_UNDERWEIGHT:
+        if row.risk_status == RISK_STATUS_EXCEED_MAX:
+            watch_note = "（只观察标的）" if row.signal_status == SIGNAL_STATUS_WATCH_ONLY else ""
+            alerts.append(
+                f"{row.symbol} 超过 max_weight 上限{watch_note}"
+                f"（当前 {row.market_value:.2f} > 允许 {row.max_allowed_value:.2f}）"
+            )
+        elif row.risk_status == RISK_STATUS_OVERWEIGHT:
+            watch_note = "（只观察标的）" if row.signal_status == SIGNAL_STATUS_WATCH_ONLY else ""
+            alerts.append(f"{row.symbol} 高于目标仓位{watch_note}（偏离 {row.deviation * 100:.1f}%）")
+        elif (
+            row.risk_status == RISK_STATUS_UNDERWEIGHT
+            and row.signal_status == SIGNAL_STATUS_ACTIVE
+        ):
             alerts.append(f"{row.symbol} 低于目标仓位，可考虑优先补仓（偏离 {row.deviation * 100:.1f}%）")
     return alerts

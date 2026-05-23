@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from src.ui.helpers import load_dashboard_data
+from src.ui.labels import localize_bool, localize_confidence, localize_role, rename_columns
 from src.utils.number_utils import format_number, format_pct
 
 
@@ -30,7 +31,12 @@ def render() -> None:
         "enabled_for_signal",
     ]
     existing = [c for c in display_cols if c in universe_df.columns]
-    st.dataframe(universe_df[existing], use_container_width=True, hide_index=True)
+    universe_view = universe_df[existing].copy()
+    if "role" in universe_view.columns:
+        universe_view["role"] = universe_view["role"].apply(localize_role)
+    if "enabled_for_signal" in universe_view.columns:
+        universe_view["enabled_for_signal"] = universe_view["enabled_for_signal"].apply(localize_bool)
+    st.dataframe(rename_columns(universe_view), use_container_width=True, hide_index=True)
 
     if prices_df.empty:
         st.warning("暂无行情数据，请运行 daily_update.py")
@@ -39,7 +45,7 @@ def render() -> None:
         price_view = prices_df[
             ["symbol", "trade_date", "close", "open", "high", "low", "volume", "amount"]
         ].copy()
-        st.dataframe(price_view, use_container_width=True, hide_index=True)
+        st.dataframe(rename_columns(price_view), use_container_width=True, hide_index=True)
 
     if indicators_df.empty:
         st.warning("暂无指标数据，请运行 daily_update.py")
@@ -67,7 +73,9 @@ def render() -> None:
                 view[col] = view[col].apply(
                     lambda x: format_pct(x) if col != "volatility_20d" else format_number(x, 4)
                 )
-        st.dataframe(view, use_container_width=True, hide_index=True)
+        if "confidence_level" in view.columns:
+            view["confidence_level"] = view["confidence_level"].apply(localize_confidence)
+        st.dataframe(rename_columns(view), use_container_width=True, hide_index=True)
 
 
 render()

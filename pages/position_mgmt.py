@@ -6,16 +6,13 @@ import streamlit as st
 from src.config.settings import load_settings
 from src.db.connection import get_connection
 from src.db.repository import get_portfolio_overview
-from src.portfolio.rebalance import STATUS_EXCEED_MAX, STATUS_OVERWEIGHT, STATUS_WATCH_ONLY
+from src.portfolio.rebalance import (
+    RISK_STATUS_EXCEED_MAX,
+    RISK_STATUS_OVERWEIGHT,
+    SIGNAL_STATUS_WATCH_ONLY,
+)
+from src.ui.labels import localize_bool, localize_status, rename_columns
 from src.utils.number_utils import format_number, format_pct
-
-STATUS_LABELS = {
-    "underweight": "低于目标",
-    "normal": "正常",
-    "overweight": "超过目标",
-    "exceed_max": "超过上限",
-    "watch_only": "只观察",
-}
 
 
 def render() -> None:
@@ -42,7 +39,7 @@ def render() -> None:
     c4.metric("总 ETF 仓位", format_pct(account["total_position"]))
     c5.metric("现金仓位", format_pct(account["cash_position"]))
     c6.metric("计划总投入", f"{total_plan_amount:,.0f}")
-    st.caption("计划总投入 (total_plan_amount) 不等于账户总资产，仅作计划参考。")
+    st.caption("计划总投入不等于账户总资产，仅作计划参考。")
 
     if overview.get("snapshot_date"):
         st.info(f"快照日期：{overview['snapshot_date']}")
@@ -59,6 +56,21 @@ def render() -> None:
         st.stop()
 
     st.subheader("ETF 仓位明细")
+    display_columns = [
+        "symbol",
+        "name",
+        "market_value",
+        "cost",
+        "profit_loss",
+        "profit_loss_rate",
+        "weight",
+        "target_weight",
+        "max_weight",
+        "max_allowed_value",
+        "deviation",
+        "status",
+        "enabled_for_signal",
+    ]
     rows = []
     for pos in positions:
         rows.append(
@@ -76,24 +88,25 @@ def render() -> None:
                 "max_weight": format_pct(pos["max_weight"]),
                 "max_allowed_value": format_number(pos["max_allowed_value"], 2),
                 "deviation": format_pct(pos["deviation"]),
-                "status": STATUS_LABELS.get(pos["status"], pos["status"]),
-                "enabled_for_signal": pos["enabled_for_signal"],
+                "status": localize_status(pos["risk_status"]),
+                "enabled_for_signal": localize_bool(pos["enabled_for_signal"]),
             }
         )
 
-    df = pd.DataFrame(rows)
+    df = rename_columns(pd.DataFrame(rows)[display_columns])
+    df = df.rename(columns={"参与策略信号": "是否参与策略信号"})
     st.dataframe(df, use_container_width=True, hide_index=True)
 
-    exceed_rows = [p for p in positions if p["status"] == STATUS_EXCEED_MAX]
-    over_rows = [p for p in positions if p["status"] == STATUS_OVERWEIGHT]
-    watch_rows = [p for p in positions if p["status"] == STATUS_WATCH_ONLY]
+    exceed_rows = [p for p in positions if p["risk_status"] == RISK_STATUS_EXCEED_MAX]
+    over_rows = [p for p in positions if p["risk_status"] == RISK_STATUS_OVERWEIGHT]
+    watch_rows = [p for p in positions if p["signal_status"] == SIGNAL_STATUS_WATCH_ONLY]
 
     if exceed_rows:
         st.error("超过 max_weight 上限：" + "、".join(r["symbol"] for r in exceed_rows))
     if over_rows:
         st.warning("高于目标仓位：" + "、".join(r["symbol"] for r in over_rows))
     if watch_rows:
-        st.info("只观察标的：" + "、".join(r["symbol"] for r in watch_rows))
+        st.info("只观察标的（不参与策略信号）：" + "、".join(r["symbol"] for r in watch_rows))
 
 
 render()

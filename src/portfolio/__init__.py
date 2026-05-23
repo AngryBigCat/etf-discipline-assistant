@@ -2,7 +2,12 @@
 
 from src.portfolio.holdings import HoldingInput, HoldingRecord, build_holding_records, save_snapshot
 from src.portfolio.position import calc_account_totals, calc_holding_metrics, calc_max_allowed_value
-from src.portfolio.rebalance import PositionRow, build_position_rows, classify_position
+from src.portfolio.rebalance import (
+    PositionRow,
+    build_position_rows,
+    classify_risk_status,
+    classify_signal_status,
+)
 
 __all__ = [
     "HoldingInput",
@@ -13,6 +18,7 @@ __all__ = [
     "calc_account_totals",
     "calc_holding_metrics",
     "calc_max_allowed_value",
-    "classify_position",
+    "classify_risk_status",
+    "classify_signal_status",
     "save_snapshot",
 ]

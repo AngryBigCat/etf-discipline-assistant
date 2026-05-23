@@ -8,10 +8,13 @@ from src.db.schema import init_schema
 from src.portfolio.holdings import HoldingInput, resolve_market_value, save_snapshot
 from src.portfolio.position import calc_account_totals, calc_max_allowed_value
 from src.portfolio.rebalance import (
-    STATUS_EXCEED_MAX,
-    STATUS_UNDERWEIGHT,
-    STATUS_WATCH_ONLY,
-    classify_position,
+    RISK_STATUS_EXCEED_MAX,
+    RISK_STATUS_UNDERWEIGHT,
+    SIGNAL_STATUS_WATCH_ONLY,
+    build_alerts,
+    build_position_rows,
+    classify_risk_status,
+    classify_signal_status,
 )
 
 
@@ -48,36 +51,85 @@ def test_max_allowed_value_uses_stricter_cap():
 
 
 def test_classify_exceed_max():
-    status = classify_position(
+    status = classify_risk_status(
         weight=0.25,
         target_weight=0.15,
         market_value=25000,
         max_allowed_value=20000,
-        enabled_for_signal=True,
     )
-    assert status == STATUS_EXCEED_MAX
+    assert status == RISK_STATUS_EXCEED_MAX
 
 
-def test_classify_watch_only():
-    status = classify_position(
-        weight=0.08,
-        target_weight=0.10,
-        market_value=8000,
-        max_allowed_value=20000,
-        enabled_for_signal=False,
-    )
-    assert status == STATUS_WATCH_ONLY
+def test_classify_watch_only_signal_status():
+    status = classify_signal_status(enabled_for_signal=False)
+    assert status == SIGNAL_STATUS_WATCH_ONLY
 
 
 def test_classify_underweight():
-    status = classify_position(
+    status = classify_risk_status(
         weight=0.05,
         target_weight=0.10,
         market_value=5000,
         max_allowed_value=20000,
-        enabled_for_signal=True,
     )
-    assert status == STATUS_UNDERWEIGHT
+    assert status == RISK_STATUS_UNDERWEIGHT
+
+
+def test_watch_only_exceed_max_risk_status():
+    risk_status = classify_risk_status(
+        weight=0.25,
+        target_weight=0.15,
+        market_value=25000,
+        max_allowed_value=20000,
+    )
+    signal_status = classify_signal_status(enabled_for_signal=False)
+    assert risk_status == RISK_STATUS_EXCEED_MAX
+    assert signal_status == SIGNAL_STATUS_WATCH_ONLY
+
+
+def test_watch_only_within_limit_signal_status():
+    signal_status = classify_signal_status(enabled_for_signal=False)
+    risk_status = classify_risk_status(
+        weight=0.08,
+        target_weight=0.10,
+        market_value=8000,
+        max_allowed_value=20000,
+    )
+    assert signal_status == SIGNAL_STATUS_WATCH_ONLY
+    assert risk_status != RISK_STATUS_EXCEED_MAX
+
+
+def test_build_alerts_watch_only_exceed_max():
+    rows = build_position_rows(
+        holdings=[
+            {
+                "symbol": "SP500",
+                "market_value": 25000,
+                "cost": 20000,
+                "profit_loss": 5000,
+                "profit_loss_rate": 0.25,
+                "weight": 0.25,
+                "quantity": 1000,
+            }
+        ],
+        universe_map={
+            "SP500": {
+                "name": "标普500",
+                "target_weight": 0.15,
+                "max_weight": 0.2,
+                "enabled_for_signal": False,
+            }
+        },
+        total_plan_amount=100000,
+        account_totals={"current_account_value": 100000},
+    )
+    alerts = build_alerts(rows)
+    assert len(alerts) == 1
+    assert "SP500" in alerts[0]
+    assert "超过 max_weight 上限" in alerts[0]
+    assert "只观察标的" in alerts[0]
+    assert rows[0].signal_status == SIGNAL_STATUS_WATCH_ONLY
+    assert rows[0].risk_status == RISK_STATUS_EXCEED_MAX
 
 
 @pytest.fixture
