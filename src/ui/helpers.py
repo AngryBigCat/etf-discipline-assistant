@@ -9,7 +9,7 @@ from src.db.repository import get_latest_daily_prices, get_latest_indicators, li
 def load_dashboard_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     with get_connection() as conn:
         universe = list_etf_universe(conn, enabled_only=True)
-        prices = get_latest_daily_prices(conn)
-        indicators = get_latest_indicators(conn)
+        prices = get_latest_daily_prices(conn, enabled_only=True)
+        indicators = get_latest_indicators(conn, enabled_only=True)
     universe_df = pd.DataFrame([dict(row) for row in universe]) if universe else pd.DataFrame()
     return universe_df, prices, indicators

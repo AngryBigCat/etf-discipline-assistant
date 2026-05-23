@@ -119,11 +119,13 @@ def get_daily_prices(conn: sqlite3.Connection, symbol: str) -> pd.DataFrame:
     return df
 
 
-def get_latest_daily_prices(conn: sqlite3.Connection) -> pd.DataFrame:
+def get_latest_daily_prices(conn: sqlite3.Connection, enabled_only: bool = False) -> pd.DataFrame:
+    enabled_join = "INNER JOIN etf_universe eu ON dp.symbol = eu.symbol AND eu.enabled = 1"
     cur = conn.execute(
-        """
+        f"""
         SELECT dp.*
         FROM daily_price dp
+        {enabled_join if enabled_only else ""}
         INNER JOIN (
             SELECT symbol, MAX(trade_date) AS max_date
             FROM daily_price
@@ -174,11 +176,13 @@ def upsert_indicator_rows(conn: sqlite3.Connection, rows: list[dict[str, Any]]) 
     return len(rows)
 
 
-def get_latest_indicators(conn: sqlite3.Connection) -> pd.DataFrame:
+def get_latest_indicators(conn: sqlite3.Connection, enabled_only: bool = False) -> pd.DataFrame:
+    enabled_join = "INNER JOIN etf_universe eu ON ind.symbol = eu.symbol AND eu.enabled = 1"
     cur = conn.execute(
-        """
+        f"""
         SELECT ind.*
         FROM indicator_daily ind
+        {enabled_join if enabled_only else ""}
         INNER JOIN (
             SELECT symbol, MAX(trade_date) AS max_date
             FROM indicator_daily
