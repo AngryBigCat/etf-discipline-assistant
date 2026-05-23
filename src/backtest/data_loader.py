@@ -6,32 +6,35 @@ import pandas as pd
 from loguru import logger
 
 BACKTEST_PRICE_COLUMNS = ["symbol", "trade_date", "close"]
-# A 股 ETF 单日涨跌幅限制约 10%，留少量缓冲识别脏数据（如节假日错价）
+# A 股 ETF 单日涨跌幅限制约 10%，留少量缓冲识别脏数据
 MAX_ETF_DAILY_CHANGE = 0.12
+ROLLING_REF_WINDOW = 20
 
 
 def _filter_price_outliers(
     df: pd.DataFrame,
     max_daily_change: float = MAX_ETF_DAILY_CHANGE,
+    rolling_window: int = ROLLING_REF_WINDOW,
 ) -> pd.DataFrame:
+    """Remove suspiciously low prices (e.g. Sina holiday placeholders).
+
+    Only filters downward anomalies against a rolling median reference.
+    Upward moves are kept so legitimate rallies / post-holiday gaps remain.
+    """
     if len(df) < 2:
         return df
 
-    keep = [True] * len(df)
-    keep[0] = True
-    for index in range(1, len(df)):
-        previous_close = None
-        for prev_index in range(index - 1, -1, -1):
-            if keep[prev_index]:
-                previous_close = float(df.iloc[prev_index]["close"])
-                break
-        if previous_close is None or previous_close <= 0:
-            continue
-        current_close = float(df.iloc[index]["close"])
-        daily_change = abs(current_close / previous_close - 1)
-        if daily_change > max_daily_change:
-            keep[index] = False
-    return df.loc[keep].reset_index(drop=True)
+    work = df.copy().reset_index(drop=True)
+    changed = True
+    while changed:
+        changed = False
+        reference = work["close"].shift(1).rolling(rolling_window, min_periods=1).median()
+        low_outlier = work["close"] < reference * (1 - max_daily_change)
+        low_outlier = low_outlier.fillna(False)
+        if low_outlier.any():
+            work = work.loc[~low_outlier].reset_index(drop=True)
+            changed = True
+    return work
 
 
 def clean_backtest_price_df(
