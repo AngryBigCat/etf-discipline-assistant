@@ -120,8 +120,8 @@ def build_alerts(position_rows: list[PositionRow]) -> list[str]:
         if row.risk_status == RISK_STATUS_EXCEED_MAX:
             watch_note = "（只观察标的）" if row.signal_status == SIGNAL_STATUS_WATCH_ONLY else ""
             alerts.append(
-                f"{row.symbol} 超过 max_weight 上限{watch_note}"
-                f"（当前 {row.market_value:.2f} > 允许 {row.max_allowed_value:.2f}）"
+                f"{row.symbol} 超过最大仓位上限{watch_note}"
+                f"（当前持仓市值 {row.market_value:.2f} > 最大允许市值 {row.max_allowed_value:.2f}）"
             )
         elif row.risk_status == RISK_STATUS_OVERWEIGHT:
             watch_note = "（只观察标的）" if row.signal_status == SIGNAL_STATUS_WATCH_ONLY else ""

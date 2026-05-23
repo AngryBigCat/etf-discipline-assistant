@@ -8,7 +8,7 @@ FIELD_LABELS = {
     "fund_code": "基金代码",
     "exchange": "交易所",
     "role": "资产角色",
-    "enabled_for_signal": "参与策略信号",
+    "enabled_for_signal": "是否参与策略信号",
     "trade_date": "交易日期",
     "close": "收盘价",
     "open": "开盘价",
@@ -51,7 +51,7 @@ ROLE_LABELS = {
 }
 
 STATUS_LABELS = {
-    "underweight": "低于目标",
+    "underweight": "低于目标仓位",
     "normal": "正常",
     "overweight": "高于目标",
     "exceed_max": "超过上限",

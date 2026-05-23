@@ -32,7 +32,7 @@ def render() -> None:
     assets = get_enabled_portfolio_assets(settings)
 
     if not assets:
-        st.warning("没有可录入的 ETF 标的（enabled=true）")
+        st.warning("没有可录入的 ETF 标的")
         st.stop()
 
     snapshot_date = st.date_input("快照日期", value=date.today()).strftime("%Y-%m-%d")
@@ -125,7 +125,7 @@ def render() -> None:
         except Exception as exc:
             st.error(f"保存失败：{exc}")
 
-    st.caption(f"默认今天：{today_str()} · CASH 仅通过上方现金余额录入，不写入 holding_snapshot")
+    st.caption(f"默认今天：{today_str()} · 现金仅通过上方「现金余额」录入，不写入持仓快照")
 
 
 render()

@@ -126,7 +126,7 @@ def test_build_alerts_watch_only_exceed_max():
     alerts = build_alerts(rows)
     assert len(alerts) == 1
     assert "SP500" in alerts[0]
-    assert "超过 max_weight 上限" in alerts[0]
+    assert "超过最大仓位上限" in alerts[0]
     assert "只观察标的" in alerts[0]
     assert rows[0].signal_status == SIGNAL_STATUS_WATCH_ONLY
     assert rows[0].risk_status == RISK_STATUS_EXCEED_MAX

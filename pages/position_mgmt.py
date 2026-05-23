@@ -94,7 +94,6 @@ def render() -> None:
         )
 
     df = rename_columns(pd.DataFrame(rows)[display_columns])
-    df = df.rename(columns={"参与策略信号": "是否参与策略信号"})
     st.dataframe(df, use_container_width=True, hide_index=True)
 
     exceed_rows = [p for p in positions if p["risk_status"] == RISK_STATUS_EXCEED_MAX]
@@ -102,7 +101,7 @@ def render() -> None:
     watch_rows = [p for p in positions if p["signal_status"] == SIGNAL_STATUS_WATCH_ONLY]
 
     if exceed_rows:
-        st.error("超过 max_weight 上限：" + "、".join(r["symbol"] for r in exceed_rows))
+        st.error("超过最大仓位上限：" + "、".join(r["symbol"] for r in exceed_rows))
     if over_rows:
         st.warning("高于目标仓位：" + "、".join(r["symbol"] for r in over_rows))
     if watch_rows:

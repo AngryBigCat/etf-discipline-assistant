@@ -18,7 +18,7 @@ def render() -> None:
         st.stop()
 
     if universe_df.empty:
-        st.warning("etf_universe 为空，请先运行 seed_data.py")
+        st.warning("ETF 标的池为空，请先运行 seed_data.py")
         st.stop()
 
     st.subheader("ETF 标的池")
