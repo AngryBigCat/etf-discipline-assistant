@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.backtest.data_loader import clean_backtest_price_df
 from src.backtest.metrics import (
     calculate_annualized_return,
     calculate_average_cost,
@@ -44,15 +45,12 @@ def run_backtest(config: BacktestConfig, price_df: pd.DataFrame) -> BacktestResu
     if config.strategy_name not in STRATEGY_REGISTRY:
         return _invalid_result(config, f"未知策略：{config.strategy_name}")
 
-    if price_df.empty:
+    df, _ = clean_backtest_price_df(price_df.copy())
+    if df.empty:
         return _invalid_result(config, "历史行情数据为空，无法回测")
 
-    if len(price_df) < MIN_TRADING_DAYS:
-        return _invalid_result(config, "历史数据不足（少于 30 个交易日）", price_df)
-
-    df = price_df.copy()
-    df["trade_date"] = df["trade_date"].astype(str)
-    df["close"] = pd.to_numeric(df["close"], errors="coerce")
+    if len(df) < MIN_TRADING_DAYS:
+        return _invalid_result(config, "历史数据不足（少于 30 个交易日）", df)
 
     requested_start_date = config.start_date
     requested_end_date = config.end_date
@@ -77,7 +75,10 @@ def run_backtest(config: BacktestConfig, price_df: pd.DataFrame) -> BacktestResu
     for index in range(len(df)):
         row = df.iloc[index]
         trade_date = str(row["trade_date"])
-        close = float(row["close"]) if pd.notna(row["close"]) else 0.0
+        close_value = row["close"]
+        if pd.isna(close_value) or float(close_value) <= 0:
+            continue
+        close = float(close_value)
 
         ctx = StrategyContext(
             index=index,
@@ -109,7 +110,7 @@ def run_backtest(config: BacktestConfig, price_df: pd.DataFrame) -> BacktestResu
                     )
                 )
 
-        position_value = quantity * close if close > 0 else 0.0
+        position_value = quantity * close
         total_value = cash + position_value
         if total_value > peak_value:
             peak_value = total_value
@@ -123,6 +124,9 @@ def run_backtest(config: BacktestConfig, price_df: pd.DataFrame) -> BacktestResu
                 drawdown=drawdown,
             )
         )
+
+    if not equity_curve:
+        return _invalid_result(config, "历史行情数据为空，无法回测", df)
 
     final_state = equity_curve[-1]
     final_value = final_state.total_value

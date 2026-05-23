@@ -86,12 +86,77 @@ def test_equity_curve_has_daily_records():
 
 
 def test_skip_non_positive_price():
-    price_df = _make_price_df(60).copy()
+    price_df = _make_price_df(60).copy()[["symbol", "trade_date", "close"]]
+    bad_date = str(price_df.iloc[10]["trade_date"])
     price_df.loc[10, "close"] = 0
     config = _base_config()
     result = run_backtest(config, price_df)
-    assert all(trade.trade_date != str(price_df.iloc[10]["trade_date"]) for trade in result.trades)
+    assert all(trade.trade_date != bad_date for trade in result.trades)
+    assert bad_date not in {point.trade_date for point in result.equity_curve}
 
+
+def test_zero_close_does_not_collapse_total_value():
+    price_df = _make_price_df(60, close=10.0)[["symbol", "trade_date", "close"]]
+    price_df.loc[10, "close"] = 0
+    config = _base_config(initial_cash=10000, fixed_amount=1000)
+    result = run_backtest(config, price_df)
+    assert result.valid is True
+    assert result.final_quantity > 0
+    assert len(result.equity_curve) == 59
+    for point in result.equity_curve:
+        assert point.total_value == pytest.approx(point.cash_value + point.position_value)
+        if point.position_value > 0:
+            assert point.total_value > point.cash_value
+
+
+def test_equity_curve_total_value_not_cash_only_while_holding():
+    price_df = _make_price_df(60, close=10.0)[["symbol", "trade_date", "close"]]
+    price_df.loc[20, "close"] = 0
+    price_df.loc[21, "close"] = 0
+    config = _base_config(initial_cash=10000, fixed_amount=1000)
+    result = run_backtest(config, price_df)
+    assert result.valid is True
+    holding_points = [point for point in result.equity_curve if point.position_value > 0]
+    assert holding_points
+    for point in holding_points:
+        assert point.position_value > 0
+        assert point.total_value > point.cash_value
+
+
+def test_backtest_filters_holiday_price_spikes_from_equity_curve():
+    dates = _trade_dates(120, start=date(2025, 6, 1))
+    price_df = pd.DataFrame(
+        {
+            "symbol": ["A500"] * len(dates),
+            "trade_date": dates,
+            "close": [1.2] * len(dates),
+        }
+    )
+    for bad_date, bad_close, rebound_date, rebound_close in [
+        ("2025-10-01", 0.8681, "2025-10-09", 1.196),
+        ("2026-01-01", 0.8334, "2026-01-05", 1.211),
+    ]:
+        if bad_date in price_df["trade_date"].values:
+            price_df.loc[price_df["trade_date"] == bad_date, "close"] = bad_close
+        if rebound_date in price_df["trade_date"].values:
+            price_df.loc[price_df["trade_date"] == rebound_date, "close"] = rebound_close
+
+    config = BacktestConfig(
+        symbol="A500",
+        strategy_name="drawdown_boost",
+        start_date=str(price_df.iloc[0]["trade_date"]),
+        end_date=str(price_df.iloc[-1]["trade_date"]),
+        initial_cash=100000,
+        fixed_amount=3000,
+        frequency="monthly",
+    )
+    result = run_backtest(config, price_df)
+    assert result.valid is True
+    prev = result.equity_curve[0]
+    for point in result.equity_curve[1:]:
+        if prev.position_value > 1000 and point.position_value > 0:
+            assert point.total_value / prev.total_value > 0.88
+        prev = point
 
 def test_empty_data_returns_friendly_error():
     config = _base_config()

@@ -36,13 +36,13 @@ MODE_OPTIONS = {
 
 
 def _format_pct(value: float | None) -> str:
-    if value is None:
+    if value is None or pd.isna(value):
         return "—"
     return f"{value * 100:.2f}%"
 
 
 def _format_money(value: float | None) -> str:
-    if value is None:
+    if value is None or pd.isna(value):
         return "—"
     return f"{value:,.2f}"
 
