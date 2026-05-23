@@ -66,6 +66,7 @@ def test_run_and_save_backtest_persists_all_tables(memory_conn):
     assert detail["result"]["actual_start_date"] == result.actual_start_date
     assert detail["result"]["actual_end_date"] == result.actual_end_date
     assert detail["result"]["trading_days"] == result.trading_days
+    assert detail["result"]["cash_utilization"] == result.cash_utilization
 
 
 def test_run_and_save_backtest_empty_data(memory_conn):
@@ -113,3 +114,4 @@ def test_backtest_result_date_columns_migration():
     assert _table_has_column(conn, "backtest_result", "actual_start_date")
     assert _table_has_column(conn, "backtest_result", "actual_end_date")
     assert _table_has_column(conn, "backtest_result", "trading_days")
+    assert _table_has_column(conn, "backtest_result", "cash_utilization")

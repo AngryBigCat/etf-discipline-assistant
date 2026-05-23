@@ -5,6 +5,7 @@ import pandas as pd
 from src.backtest.metrics import (
     calculate_annualized_return,
     calculate_average_cost,
+    calculate_cash_utilization,
     calculate_max_drawdown,
     calculate_total_return,
 )
@@ -154,4 +155,5 @@ def run_backtest(config: BacktestConfig, price_df: pd.DataFrame) -> BacktestResu
         actual_start_date=actual_start_date,
         actual_end_date=actual_end_date,
         trading_days=trading_days,
+        cash_utilization=calculate_cash_utilization(total_invested, config.initial_cash),
     )

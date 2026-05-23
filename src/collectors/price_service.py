@@ -29,6 +29,12 @@ class CompositeCollector:
         self.primary = primary or AkshareCollector()
         self.fallback = fallback or MockCollector()
 
+    def _resolve_fetch_metadata(self) -> tuple[str, bool]:
+        data_source = getattr(self.primary, "last_data_source", None)
+        if data_source in {"eastmoney", "sina"}:
+            return str(data_source), data_source == "sina"
+        return self.primary.source_name, False
+
     def fetch_history(
         self,
         symbol: str,
@@ -40,19 +46,6 @@ class CompositeCollector:
             df = self.fallback.fetch_history(symbol, fund_code, start_date, end_date)
             return FetchResult(df=df, source=self.fallback.source_name, used_fallback=True)
 
-        if self.mode == "akshare":
-            df = self.primary.fetch_history(symbol, fund_code, start_date, end_date)
-            return FetchResult(df=df, source=self.primary.source_name, used_fallback=False)
-
-        try:
-            df = self.primary.fetch_history(symbol, fund_code, start_date, end_date)
-            return FetchResult(df=df, source=self.primary.source_name, used_fallback=False)
-        except Exception as exc:
-            logger.warning(
-                "Primary collector failed for {} ({}): {}. Falling back to mock.",
-                symbol,
-                fund_code,
-                exc,
-            )
-            df = self.fallback.fetch_history(symbol, fund_code, start_date, end_date)
-            return FetchResult(df=df, source=self.fallback.source_name, used_fallback=True)
+        df = self.primary.fetch_history(symbol, fund_code, start_date, end_date)
+        source, used_fallback = self._resolve_fetch_metadata()
+        return FetchResult(df=df, source=source, used_fallback=used_fallback)

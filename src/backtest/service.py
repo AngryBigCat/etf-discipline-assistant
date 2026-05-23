@@ -59,6 +59,7 @@ def run_and_save_backtest(
             "actual_start_date": result.actual_start_date,
             "actual_end_date": result.actual_end_date,
             "trading_days": result.trading_days,
+            "cash_utilization": result.cash_utilization,
         },
     )
 
@@ -95,6 +96,36 @@ def run_and_save_backtest(
     )
 
     return run_id, result, "回测已完成"
+
+
+def run_backtest_comparison(
+    conn: sqlite3.Connection,
+    base_config: BacktestConfig,
+    strategy_names: list[str],
+) -> list[dict]:
+    comparison_results: list[dict] = []
+    for strategy_name in strategy_names:
+        config = BacktestConfig(
+            symbol=base_config.symbol,
+            strategy_name=strategy_name,
+            start_date=base_config.start_date,
+            end_date=base_config.end_date,
+            initial_cash=base_config.initial_cash,
+            fixed_amount=base_config.fixed_amount,
+            frequency=base_config.frequency,
+            params=dict(base_config.params),
+            run_name=base_config.run_name,
+        )
+        run_id, result, message = run_and_save_backtest(conn, config)
+        comparison_results.append(
+            {
+                "strategy_name": strategy_name,
+                "run_id": run_id,
+                "result": result,
+                "message": message,
+            }
+        )
+    return comparison_results
 
 
 def load_backtest_detail(conn: sqlite3.Connection, run_id: int) -> dict:

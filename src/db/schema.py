@@ -217,6 +217,7 @@ SCHEMA_STATEMENTS: list[str] = [
         actual_start_date TEXT,
         actual_end_date TEXT,
         trading_days INTEGER,
+        cash_utilization REAL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(run_id) REFERENCES backtest_run(id)
     )
@@ -300,6 +301,7 @@ def apply_schema_migrations(conn: sqlite3.Connection) -> None:
             "actual_start_date": "TEXT",
             "actual_end_date": "TEXT",
             "trading_days": "INTEGER",
+            "cash_utilization": "REAL",
         }
         for column_name, column_def in backtest_result_columns.items():
             if not _table_has_column(conn, "backtest_result", column_name):

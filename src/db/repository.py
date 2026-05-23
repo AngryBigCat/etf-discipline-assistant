@@ -807,11 +807,13 @@ def save_backtest_result(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
         INSERT INTO backtest_result (
             run_id, final_value, total_invested, cash_value, position_value,
             total_return, annualized_return, max_drawdown, trade_count,
-            final_quantity, average_cost, actual_start_date, actual_end_date, trading_days
+            final_quantity, average_cost, actual_start_date, actual_end_date, trading_days,
+            cash_utilization
         ) VALUES (
             :run_id, :final_value, :total_invested, :cash_value, :position_value,
             :total_return, :annualized_return, :max_drawdown, :trade_count,
-            :final_quantity, :average_cost, :actual_start_date, :actual_end_date, :trading_days
+            :final_quantity, :average_cost, :actual_start_date, :actual_end_date, :trading_days,
+            :cash_utilization
         )
         """,
         row,
@@ -887,6 +889,38 @@ def list_backtest_runs(conn: sqlite3.Connection, limit: int = 20) -> list[sqlite
         """
         SELECT * FROM backtest_run
         ORDER BY created_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()
+
+
+def list_backtest_run_summaries(conn: sqlite3.Connection, limit: int = 20) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT
+            r.id AS run_id,
+            r.symbol,
+            r.strategy_name,
+            r.start_date,
+            r.end_date,
+            r.frequency,
+            r.initial_cash,
+            r.fixed_amount,
+            r.created_at,
+            res.actual_start_date,
+            res.actual_end_date,
+            res.trading_days,
+            res.final_value,
+            res.total_return,
+            res.annualized_return,
+            res.max_drawdown,
+            res.trade_count,
+            res.cash_utilization
+        FROM backtest_run r
+        LEFT JOIN backtest_result res ON res.run_id = r.id
+        ORDER BY r.created_at DESC
         LIMIT ?
         """,
         (limit,),

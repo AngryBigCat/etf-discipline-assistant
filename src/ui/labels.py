@@ -103,6 +103,8 @@ FIELD_LABELS = {
     "actual_start_date": "实际开始日期",
     "actual_end_date": "实际结束日期",
     "trading_days": "交易日数量",
+    "cash_utilization": "资金利用率",
+    "created_at": "创建时间",
 }
 
 ROLE_LABELS = {

@@ -37,3 +37,9 @@ def calculate_average_cost(total_invested: float, final_quantity: float) -> floa
     if final_quantity <= 0:
         return 0.0
     return total_invested / final_quantity
+
+
+def calculate_cash_utilization(total_invested: float, initial_cash: float) -> float:
+    if initial_cash <= 0:
+        return 0.0
+    return total_invested / initial_cash

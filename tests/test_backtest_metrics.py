@@ -9,6 +9,7 @@ import pytest
 from src.backtest.metrics import (
     calculate_annualized_return,
     calculate_average_cost,
+    calculate_cash_utilization,
     calculate_max_drawdown,
     calculate_total_return,
 )
@@ -45,3 +46,8 @@ def test_calculate_max_drawdown():
 def test_calculate_average_cost():
     assert calculate_average_cost(9000, 300) == pytest.approx(30)
     assert calculate_average_cost(9000, 0) == 0.0
+
+
+def test_calculate_cash_utilization():
+    assert calculate_cash_utilization(3000, 10000) == pytest.approx(0.3)
+    assert calculate_cash_utilization(1000, 0) == 0.0

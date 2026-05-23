@@ -59,3 +59,4 @@ class BacktestResult:
     actual_start_date: str = ""
     actual_end_date: str = ""
     trading_days: int = 0
+    cash_utilization: float = 0.0

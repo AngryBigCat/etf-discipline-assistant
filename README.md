@@ -34,8 +34,8 @@
 ### 阶段 1-3：数据底座
 
 - ETF 标的池（symbol / fund_code / exchange）
-- AKShare 行情采集
-- mock 数据兜底
+- AKShare 行情采集（东方财富优先，失败自动切新浪）
+- `PRICE_DATA_SOURCE=mock` 时可用 mock 数据（仅开发/测试）
 - SQLite 数据库
 - MA20 / MA60 / MA120 / MA250
 - 回撤、波动率、阶段涨跌幅
@@ -117,6 +117,17 @@
 - Streamlit「回测分析」页：参数配置、收益摘要、总资产/回撤曲线、模拟交易记录、历史回测
 - **回测仅用于历史规则验证，不代表未来收益，不构成投资建议**
 
+### 阶段 9.1：历史行情补全与多策略对比
+
+- 历史行情补全 CLI：`scripts/backfill_prices.py`（依赖东方财富行情接口，内置直连/代理重试；网络异常时会提示系统代理排查）
+- 支持单标的或全部启用标的补全，重复运行 upsert 不产生重复数据
+- 多策略对比：同一标的/区间/资金参数下并行运行多个回测策略
+- 新增指标：资金利用率（`total_invested / initial_cash`）
+- 回测页支持「单策略回测 / 多策略对比」两种模式
+- 对比结果展示表格 + 多策略总资产/回撤曲线
+- 历史回测记录展示收益率、最大回撤、资金利用率等关键指标
+- **补全与回测结果均不代表未来收益，不构成投资建议**
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -149,6 +160,7 @@ python scripts/generate_daily_report.py
 python scripts/generate_weekly_report.py
 python scripts/generate_ai_daily_review.py
 python scripts/generate_ai_weekly_review.py
+python scripts/backfill_prices.py --symbol A500 --start 2021-01-01 --end 2026-05-23
 python scripts/run_backtest.py
 
 pytest
@@ -158,8 +170,12 @@ streamlit run app.py
 回测 CLI 示例：
 
 ```bash
+python scripts/backfill_prices.py --symbol A500 --start 2021-01-01 --end 2026-05-23
+python scripts/backfill_prices.py --all --start 2021-01-01 --end 2026-05-23
 python scripts/run_backtest.py --symbol A500 --strategy baseline_dca --start 2021-01-01 --end 2026-05-23 --cash 100000 --amount 3000 --frequency monthly
 ```
+
+若补全失败并提示系统代理（如 `127.0.0.1:7890`），请确认 Clash/V2Ray 等代理软件已启动；国内网络也可尝试关闭 Windows「使用代理服务器」后重试。
 
 ## 配置说明
 
@@ -176,7 +192,7 @@ python scripts/run_backtest.py --symbol A500 --strategy baseline_dca --start 202
 可选环境变量在 `.env`（可复制 `.env.example` 后修改，**不要提交 `.env` 到 Git**）：
 
 - `DATABASE_PATH`
-- `PRICE_DATA_SOURCE=auto|akshare|mock`
+- `PRICE_DATA_SOURCE=auto|akshare|mock`（默认 `auto`：东方财富 → 新浪，失败报错；`mock` 仅用于离线测试）
 - `LLM_PROVIDER=mock|openai_compatible`
 - `LLM_API_KEY`
 - `LLM_API_BASE`
