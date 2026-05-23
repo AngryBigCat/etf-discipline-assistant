@@ -310,6 +310,40 @@ SCHEMA_STATEMENTS: list[str] = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_task_action_log_task_id ON task_action_log(task_id)",
+    """
+    CREATE TABLE IF NOT EXISTS scheduler_job_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_key TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        description TEXT,
+        enabled INTEGER DEFAULT 1,
+        cron_expr TEXT NOT NULL,
+        timezone TEXT DEFAULT 'Asia/Shanghai',
+        job_type TEXT NOT NULL,
+        params_json TEXT,
+        max_instances INTEGER DEFAULT 1,
+        coalesce INTEGER DEFAULT 1,
+        misfire_grace_time INTEGER DEFAULT 3600,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_scheduler_job_config_enabled ON scheduler_job_config(enabled)",
+    """
+    CREATE TABLE IF NOT EXISTS scheduler_run_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_key TEXT NOT NULL,
+        scheduled_time TEXT,
+        started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        finished_at TEXT,
+        status TEXT NOT NULL,
+        message TEXT,
+        detail TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_scheduler_run_log_job_key ON scheduler_run_log(job_key)",
+    "CREATE INDEX IF NOT EXISTS idx_scheduler_run_log_started_at ON scheduler_run_log(started_at)",
 ]
 
 

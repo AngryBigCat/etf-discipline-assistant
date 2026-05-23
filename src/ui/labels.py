@@ -282,6 +282,18 @@ TASK_SOURCE_TYPE_LABELS = {
     "backtest": "回测",
 }
 
+SCHEDULER_STATUS_LABELS = {
+    "running": "运行中",
+    "success": "成功",
+    "failed": "失败",
+    "skipped": "已跳过",
+}
+
+SCHEDULER_JOB_TYPE_LABELS = {
+    "daily_pipeline": "每日流程",
+    "weekly_pipeline": "每周流程",
+}
+
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={col: FIELD_LABELS.get(col, col) for col in df.columns})
@@ -386,3 +398,15 @@ def localize_task_source_type(value: object) -> object:
     if value in (None, ""):
         return "—"
     return TASK_SOURCE_TYPE_LABELS.get(value, value)
+
+
+def localize_scheduler_status(value: object) -> object:
+    if value in (None, ""):
+        return "—"
+    return SCHEDULER_STATUS_LABELS.get(value, value)
+
+
+def localize_scheduler_job_type(value: object) -> object:
+    if value in (None, ""):
+        return "—"
+    return SCHEDULER_JOB_TYPE_LABELS.get(value, value)

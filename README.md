@@ -193,6 +193,17 @@
 - 行情更新、策略信号、任务中心、回测选择、持仓录入等优先从 `etf_universe` 读取
 - **停用标的不删除历史行情 / 交易 / 持仓 / 策略信号**
 
+### 阶段 12：定时任务 / 自动流程编排
+
+- 新增独立进程 `scripts/scheduler_worker.py`，使用 APScheduler 在 Linux 服务器中调度安全流程
+- 默认任务：`daily_after_close`（工作日 16:30）、`weekly_review`（周五 17:30，Asia/Shanghai）
+- 流程编排位于 `src/workflows/pipelines.py`，复用 `src/workflows/daily_workflow.py` 与任务刷新逻辑
+- 任务配置与运行日志持久化到 `scheduler_job_config` / `scheduler_run_log`
+- Streamlit「定时任务」页支持查看任务、启用/停用、立即执行、查看最近 100 条日志
+- 手动测试：`python scripts/run_scheduled_job.py --job daily_after_close`
+- Linux 部署说明见 [`docs/deployment-linux.md`](docs/deployment-linux.md)
+- **定时任务不会自动交易，不会自动修改真实持仓，不会自动审核策略信号；不构成投资建议**
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -210,6 +221,7 @@
 - AI复盘
 - 回测分析
 - 任务中心
+- 定时任务
 - 系统设置
 
 ## 运行方式
@@ -229,6 +241,9 @@ python scripts/generate_weekly_report.py
 python scripts/generate_ai_daily_review.py
 python scripts/generate_ai_weekly_review.py
 python scripts/generate_tasks.py
+python scripts/run_scheduled_job.py --job daily_after_close
+python scripts/run_scheduled_job.py --job weekly_review
+python scripts/scheduler_worker.py
 python scripts/backfill_prices.py --symbol A500 --start 2021-01-01 --end 2026-05-23
 python scripts/run_backtest.py
 python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --cash 100000 --amount 3000 --frequency monthly

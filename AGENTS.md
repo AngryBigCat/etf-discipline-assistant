@@ -232,18 +232,39 @@ AI 层不得参与回测决策。
 - 配置编辑校验、备份与保存（`src/config/editor.py`）
 - 标的池同步到 `etf_universe`（`src/config/sync.py`），不得删除历史数据
 - 标的池数据库化：`src/assets/validator.py`、`src/db/repository.py` 增删改查与校验
+- 定时任务：默认任务初始化、pipeline 编排、run log、cron 解析、启用/停用与 skipped 逻辑
 
 ### 工作流层（`src/workflows/`）
 
 负责：
 
 - 封装行情更新、信号生成、报告生成、AI 复盘等可复用流程
-- 供 CLI 脚本与任务中心白名单执行共用
+- 供 CLI 脚本、任务中心白名单执行与定时任务 pipeline 共用
+- 编排每日 / 每周安全流程（`src/workflows/pipelines.py`）
 
 不得负责：
 
 - 自动交易
 - 自动修改持仓 / 信号审核状态 / 交易日志
+
+### 定时任务层（`src/scheduler/` / `scripts/scheduler_worker.py`）
+
+负责：
+
+- 作为**独立进程**运行 APScheduler BlockingScheduler
+- 从 `scheduler_job_config` 读取 cron 配置并调度安全 pipeline
+- 将执行结果写入 `scheduler_run_log`
+- 提供手动执行入口（`scripts/run_scheduled_job.py`）与 Streamlit「定时任务」页
+
+不得负责：
+
+- 自动下单或自动修改 `trade_log` / `holding_snapshot` / `account_snapshot`
+- 自动审核策略信号或自动调整持仓
+- 自动修改 `config/app.yaml` 或策略参数
+- 把定时任务结果表述为投资建议
+- **在 Streamlit 页面主循环或 Streamlit 进程内启动 scheduler**
+
+scheduler 必须独立运行；任务失败不得导致 worker 进程崩溃。
 
 ### 配置中心（`src/config/editor.py` / `pages/settings.py`）
 
@@ -309,6 +330,10 @@ AI 层不得参与回测决策。
   - 用户可见字段必须中文化，不得展示 raw 配置字段名
   - 不得展示 API Key 明文，仅显示已配置 / 未配置
   - 页面须明确提示：仅维护纪律参数，不构成投资建议，不会自动交易
+- 定时任务页面：
+  - 使用 `localize_scheduler_status` / `localize_scheduler_job_type` 展示状态与类型
+  - 页面须明确提示：只执行安全流程，不会自动交易、不会自动修改持仓、不会自动审核信号
+  - 「立即执行」必须调用 `run_scheduler_job`，不得绕过 pipeline 直接写业务表
 
 ## 开发流程
 
