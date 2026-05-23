@@ -139,6 +139,7 @@ def render() -> None:
         st.metric("高优先级", dashboard["high_priority_count"])
 
     tasks = dashboard.get("tasks") or []
+    today_tasks = [task for task in tasks if task.get("category") != "risk"]
     risk_tasks = [
         task
         for task in tasks
@@ -149,8 +150,8 @@ def render() -> None:
     )
 
     st.subheader("今日任务")
-    _render_task_table(tasks, empty_message="今日暂无任务，可点击「刷新今日任务」生成。")
-    _render_task_actions(tasks, settings=settings, key_prefix=f"today_{task_date_str}")
+    _render_task_table(today_tasks, empty_message="今日暂无任务，可点击「刷新今日任务」生成。")
+    _render_task_actions(today_tasks, settings=settings, key_prefix=f"today_{task_date_str}")
 
     st.subheader("风险任务")
     _render_task_table(risk_tasks, empty_message="当前没有待处理的风险任务。")
