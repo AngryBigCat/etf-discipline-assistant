@@ -174,8 +174,12 @@ def _render_asset_pool(config: dict) -> None:
         symbol = str(asset.get("symbol") or f"asset_{index}")
         status_label = _asset_status_label(asset)
         title = f"{symbol} · {asset.get('name') or '未命名'} · {status_label}"
-        expanded = bool(asset.get("enabled", True))
-        with st.expander(title, expanded=expanded):
+        is_enabled = bool(asset.get("enabled", True))
+        with st.expander(
+            title,
+            expanded=False,
+            key=f"asset_expander_{symbol}_{int(is_enabled)}",
+        ):
             st.markdown(
                 f"**{FIELD_LABELS['symbol']}**：{symbol}  "
                 f"**{FIELD_LABELS['fund_code']}**：{asset.get('fund_code') or '—'}  "
