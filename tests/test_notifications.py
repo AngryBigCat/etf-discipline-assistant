@@ -25,6 +25,11 @@ from src.workflows.daily_workflow import WorkflowResult
 from src.workflows.pipelines import run_daily_pipeline
 
 
+@pytest.fixture(autouse=True)
+def _disable_email_env_file_reload(monkeypatch):
+    monkeypatch.setattr("src.notifications.config._load_email_env_from_file", lambda: None)
+
+
 @pytest.fixture
 def memory_conn():
     conn = sqlite3.connect(":memory:")

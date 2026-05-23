@@ -21,21 +21,26 @@ def main() -> None:
     display = format_email_settings_display()
     st.subheader("邮件配置状态")
     col1, col2 = st.columns(2)
-    with col1:
-        st.text_input("邮件通知", value=display["enabled"], disabled=True)
-        st.text_input("SMTP 主机", value=display["smtp_host"], disabled=True)
-        st.text_input("SMTP 用户", value=display["smtp_username"], disabled=True)
-        st.text_input("SMTP 密码", value=display["smtp_password"], disabled=True)
-    with col2:
-        st.text_input("发件人", value=display["email_from"], disabled=True)
-        st.text_input("收件人", value=display["email_to"], disabled=True)
-        st.text_input("定时任务失败提醒", value=display["notify_on_scheduler_failure"], disabled=True)
-        st.text_input("高优先级任务提醒", value=display["notify_on_high_priority_tasks"], disabled=True)
-        st.text_input("仓位风险提醒", value=display["notify_on_portfolio_risk"], disabled=True)
+    readonly_fields = [
+        ("邮件通知", display["enabled"]),
+        ("SMTP 主机", display["smtp_host"]),
+        ("SMTP 用户", display["smtp_username"]),
+        ("SMTP 密码", display["smtp_password"]),
+        ("发件人", display["email_from"]),
+        ("收件人", display["email_to"]),
+        ("定时任务失败提醒", display["notify_on_scheduler_failure"]),
+        ("高优先级任务提醒", display["notify_on_high_priority_tasks"]),
+        ("仓位风险提醒", display["notify_on_portfolio_risk"]),
+    ]
+    for index, (label, value) in enumerate(readonly_fields):
+        target = col1 if index % 2 == 0 else col2
+        with target:
+            st.text_input(label, value=value, disabled=True, key=f"notify_status_{index}_{value}")
 
     st.info(
         "SMTP 密码、API Key 等敏感信息仅通过 `.env` 配置，"
         "本页面不会展示明文，也不会写入数据库。"
+        "修改 `.env` 后刷新本页即可读取最新配置。"
     )
 
     if st.button("发送测试邮件", type="primary", use_container_width=True):

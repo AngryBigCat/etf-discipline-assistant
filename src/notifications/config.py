@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from dotenv import load_dotenv
+
 EMAIL_SUBJECT_PREFIX = "[ETF纪律助手]"
 
 
@@ -31,7 +33,14 @@ class EmailSettingsView(dict[str, Any]):
         return f"EmailSettingsView({safe!r})"
 
 
+def _load_email_env_from_file() -> None:
+    from src.config.settings import get_project_root
+
+    load_dotenv(get_project_root() / ".env", override=True)
+
+
 def get_email_settings() -> EmailSettingsView:
+    _load_email_env_from_file()
     return EmailSettingsView(
         {
             "enabled": _parse_bool(os.getenv("EMAIL_ENABLED"), default=False),
