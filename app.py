@@ -20,6 +20,7 @@ page = st.navigation(
         st.Page("pages/position_mgmt.py", title="仓位管理"),
         st.Page("pages/strategy_signals.py", title="策略信号"),
         st.Page("pages/trade_log.py", title="交易日志"),
+        st.Page("pages/reports.py", title="报告复盘"),
     ]
 )
 page.run()

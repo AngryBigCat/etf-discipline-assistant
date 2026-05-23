@@ -57,6 +57,16 @@ FIELD_LABELS = {
     "price": "交易价格",
     "note": "备注",
     "is_rule_based": "是否符合规则",
+    "report_date": "报告日期",
+    "week_start": "周开始",
+    "week_end": "周结束",
+    "summary": "概况",
+    "risk_warning": "风险提示",
+    "discipline_summary": "纪律统计",
+    "risk_summary": "风险摘要",
+    "action_suggestion": "操作建议",
+    "total_position": "ETF 总仓位",
+    "cash_position": "现金仓位",
 }
 
 ROLE_LABELS = {

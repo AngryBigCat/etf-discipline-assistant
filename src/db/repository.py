@@ -578,3 +578,109 @@ def get_recent_trade_logs(conn: sqlite3.Connection, limit: int = 50) -> list[sql
         (limit,),
     )
     return cur.fetchall()
+
+
+def upsert_daily_report(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    sql = """
+    INSERT INTO daily_report (
+        report_date, total_position, cash_position,
+        summary, risk_warning, action_suggestion
+    ) VALUES (
+        :report_date, :total_position, :cash_position,
+        :summary, :risk_warning, :action_suggestion
+    )
+    ON CONFLICT(report_date) DO UPDATE SET
+        total_position = excluded.total_position,
+        cash_position = excluded.cash_position,
+        summary = excluded.summary,
+        risk_warning = excluded.risk_warning,
+        action_suggestion = excluded.action_suggestion
+    """
+    conn.execute(sql, row)
+
+
+def get_daily_report_by_date(conn: sqlite3.Connection, report_date: str) -> sqlite3.Row | None:
+    cur = conn.execute(
+        "SELECT * FROM daily_report WHERE report_date = ?",
+        (report_date,),
+    )
+    return cur.fetchone()
+
+
+def get_latest_daily_report(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    cur = conn.execute(
+        """
+        SELECT * FROM daily_report
+        ORDER BY report_date DESC
+        LIMIT 1
+        """
+    )
+    return cur.fetchone()
+
+
+def list_daily_reports(conn: sqlite3.Connection, limit: int = 30) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM daily_report
+        ORDER BY report_date DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()
+
+
+def upsert_weekly_report(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    sql = """
+    INSERT INTO weekly_report (
+        week_start, week_end, summary, discipline_summary,
+        risk_summary, action_suggestion
+    ) VALUES (
+        :week_start, :week_end, :summary, :discipline_summary,
+        :risk_summary, :action_suggestion
+    )
+    ON CONFLICT(week_start, week_end) DO UPDATE SET
+        summary = excluded.summary,
+        discipline_summary = excluded.discipline_summary,
+        risk_summary = excluded.risk_summary,
+        action_suggestion = excluded.action_suggestion
+    """
+    conn.execute(sql, row)
+
+
+def get_weekly_report(
+    conn: sqlite3.Connection,
+    week_start: str,
+    week_end: str,
+) -> sqlite3.Row | None:
+    cur = conn.execute(
+        """
+        SELECT * FROM weekly_report
+        WHERE week_start = ? AND week_end = ?
+        """,
+        (week_start, week_end),
+    )
+    return cur.fetchone()
+
+
+def get_latest_weekly_report(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    cur = conn.execute(
+        """
+        SELECT * FROM weekly_report
+        ORDER BY week_end DESC, week_start DESC
+        LIMIT 1
+        """
+    )
+    return cur.fetchone()
+
+
+def list_weekly_reports(conn: sqlite3.Connection, limit: int = 20) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM weekly_report
+        ORDER BY week_end DESC, week_start DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()

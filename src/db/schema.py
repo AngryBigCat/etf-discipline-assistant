@@ -148,6 +148,19 @@ SCHEMA_STATEMENTS: list[str] = [
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS weekly_report (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        week_start TEXT NOT NULL,
+        week_end TEXT NOT NULL,
+        summary TEXT,
+        discipline_summary TEXT,
+        risk_summary TEXT,
+        action_suggestion TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(week_start, week_end)
+    )
+    """,
     "CREATE INDEX IF NOT EXISTS idx_daily_price_symbol_date ON daily_price(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_indicator_daily_symbol_date ON indicator_daily(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_trade_log_trade_date ON trade_log(trade_date)",

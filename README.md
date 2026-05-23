@@ -84,6 +84,17 @@
 
 **注意**：交易日志只记录用户实际交易行为，不会自动修改 `account_snapshot` 或 `holding_snapshot`；交易后仍需在「持仓录入」页面手动更新持仓快照。
 
+### 阶段 7：日报与周报
+
+- 模板化日报：账户概况、策略信号摘要、当日交易纪律、风险提示、操作建议
+- 模板化周报：本周交易统计、纪律执行率、仓位风险、下周建议
+- 数据来源：账户快照、策略信号、交易日志、仓位 alerts（只读聚合，不修改持仓）
+- 写入 `daily_report` / `weekly_report` 表，支持同日/同周 upsert 覆盖
+- CLI：`scripts/generate_daily_report.py`、`scripts/generate_weekly_report.py`
+- Streamlit「报告复盘」页：生成/查看日报与周报、历史列表
+- 无账户快照时友好提示；无交易日志时统计为 0，不崩溃
+- 本阶段不接 AI，不自动交易，不自动修改持仓
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -97,6 +108,7 @@
 - 仓位管理
 - 策略信号
 - 交易日志
+- 报告复盘
 
 ## 运行方式
 
@@ -109,6 +121,8 @@ python scripts/init_db.py
 python scripts/seed_data.py
 python scripts/daily_update.py
 python scripts/generate_signals.py
+python scripts/generate_daily_report.py
+python scripts/generate_weekly_report.py
 
 pytest
 streamlit run app.py
@@ -132,13 +146,6 @@ streamlit run app.py
 - `PRICE_DATA_SOURCE=auto|akshare|mock`
 
 ## 未来蓝图
-
-### 阶段 7：日报与周报
-
-- 自动生成每日纪律报告
-- 自动生成每周交易复盘
-- 统计本周是否追涨、是否偏离策略
-- 总结仓位变化
 
 ### 阶段 8：AI 复盘
 
