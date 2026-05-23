@@ -3,12 +3,15 @@ from __future__ import annotations
 from typing import Any
 
 from src.db.repository import (
+    get_task_item,
     list_recent_tasks,
     list_tasks_by_date,
     mark_task_done,
     mark_task_skipped,
+    save_task_action_log,
     upsert_task_item,
 )
+from src.tasks.actions import TaskActionResult, execute_task_action
 from src.tasks.generators import generate_all_tasks
 
 
@@ -38,7 +41,7 @@ def refresh_tasks_for_date(conn, settings: dict[str, Any], task_date: str) -> li
 def get_task_dashboard(conn, settings: dict[str, Any], task_date: str) -> dict[str, Any]:
     rows = list_tasks_by_date(conn, task_date)
     if not rows:
-        rows = refresh_tasks_for_date(conn, settings, task_date)
+        refresh_tasks_for_date(conn, settings, task_date)
         rows = list_tasks_by_date(conn, task_date)
 
     tasks = [dict(row) for row in rows]
@@ -64,6 +67,33 @@ def complete_task(conn, task_id: int, note: str | None = None) -> None:
 
 def skip_task(conn, task_id: int, note: str | None = None) -> None:
     mark_task_skipped(conn, task_id, note=note)
+
+
+def execute_task(conn, settings: dict[str, Any], task_id: int) -> TaskActionResult:
+    task_row = get_task_item(conn, task_id)
+    if task_row is None:
+        return TaskActionResult(success=False, message="任务不存在", should_mark_done=False)
+
+    task = dict(task_row)
+    result = execute_task_action(conn, settings, task)
+    save_task_action_log(
+        conn,
+        {
+            "task_id": task_id,
+            "task_date": task.get("task_date"),
+            "task_type": task.get("task_type"),
+            "action_name": task.get("task_type"),
+            "success": 1 if result.success else 0,
+            "message": result.message,
+            "detail": result.detail,
+        },
+    )
+
+    if result.success and result.should_mark_done:
+        mark_task_done(conn, task_id)
+
+    refresh_tasks_for_date(conn, settings, str(task["task_date"]))
+    return result
 
 
 def get_recent_task_history(conn, limit: int = 100) -> list[dict[str, Any]]:

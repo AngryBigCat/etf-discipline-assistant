@@ -1147,3 +1147,46 @@ def mark_task_skipped(conn: sqlite3.Connection, task_id: int, note: str | None =
 
 def delete_tasks_by_date(conn: sqlite3.Connection, task_date: str) -> None:
     conn.execute("DELETE FROM task_item WHERE task_date = ?", (task_date,))
+
+
+def get_task_item(conn: sqlite3.Connection, task_id: int) -> sqlite3.Row | None:
+    cur = conn.execute("SELECT * FROM task_item WHERE id = ?", (task_id,))
+    return cur.fetchone()
+
+
+def save_task_action_log(conn: sqlite3.Connection, row: dict[str, Any]) -> int:
+    cur = conn.execute(
+        """
+        INSERT INTO task_action_log (
+            task_id, task_date, task_type, action_name, success, message, detail
+        ) VALUES (
+            :task_id, :task_date, :task_type, :action_name, :success, :message, :detail
+        )
+        """,
+        row,
+    )
+    return int(cur.lastrowid)
+
+
+def list_task_action_logs(conn: sqlite3.Connection, limit: int = 100) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM task_action_log
+        ORDER BY created_at DESC, id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()
+
+
+def list_task_action_logs_by_task(conn: sqlite3.Connection, task_id: int) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM task_action_log
+        WHERE task_id = ?
+        ORDER BY created_at DESC, id DESC
+        """,
+        (task_id,),
+    )
+    return cur.fetchall()

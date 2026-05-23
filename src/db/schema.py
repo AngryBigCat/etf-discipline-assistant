@@ -295,6 +295,21 @@ SCHEMA_STATEMENTS: list[str] = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_task_item_date_status ON task_item(task_date, status)",
+    """
+    CREATE TABLE IF NOT EXISTS task_action_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER,
+        task_date TEXT,
+        task_type TEXT NOT NULL,
+        action_name TEXT NOT NULL,
+        success INTEGER NOT NULL,
+        message TEXT,
+        detail TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(task_id) REFERENCES task_item(id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_task_action_log_task_id ON task_action_log(task_id)",
 ]
 
 

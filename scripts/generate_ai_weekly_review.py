@@ -11,10 +11,10 @@ if str(ROOT) not in sys.path:
 
 from loguru import logger
 
-from src.ai_review.review_service import generate_weekly_ai_review
 from src.config.settings import load_settings
 from src.db.connection import db_session, ensure_database_dir, get_database_path
 from src.utils.date_utils import today_str
+from src.workflows.daily_workflow import run_generate_ai_weekly_review
 
 
 def main() -> None:
@@ -31,18 +31,14 @@ def main() -> None:
     ).strftime("%Y-%m-%d")
 
     with db_session(db_path) as conn:
-        review, saved, message = generate_weekly_ai_review(
-            conn,
-            settings,
-            week_start,
-            week_end,
-        )
+        result = run_generate_ai_weekly_review(conn, settings, week_start, week_end)
 
-    if saved:
-        logger.info(message)
-        logger.info("Discipline summary preview: {}", (review or {}).get("discipline_summary", "")[:200])
+    if result.success:
+        logger.info(result.message)
     else:
-        logger.warning(message)
+        logger.warning(result.message)
+        if result.detail:
+            logger.warning(result.detail)
 
 
 if __name__ == "__main__":

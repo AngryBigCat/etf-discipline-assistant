@@ -7,8 +7,10 @@ import streamlit as st
 
 from src.config.settings import load_settings
 from src.db.connection import db_session, get_connection
+from src.tasks.actions import get_task_guidance, is_executable_task
 from src.tasks.service import (
     complete_task,
+    execute_task,
     get_recent_task_history,
     get_task_dashboard,
     refresh_tasks_for_date,
@@ -54,7 +56,12 @@ def _render_task_table(tasks: list[dict], *, empty_message: str) -> None:
     st.dataframe(display_df.rename(columns=column_map), use_container_width=True, hide_index=True)
 
 
-def _render_task_actions(tasks: list[dict], *, key_prefix: str) -> None:
+def _render_task_actions(
+    tasks: list[dict],
+    *,
+    settings: dict,
+    key_prefix: str,
+) -> None:
     pending_tasks = [task for task in tasks if task.get("status") == "pending"]
     if not pending_tasks:
         return
@@ -62,10 +69,31 @@ def _render_task_actions(tasks: list[dict], *, key_prefix: str) -> None:
     st.markdown("#### 任务操作")
     for task in pending_tasks:
         task_id = int(task["id"])
+        task_type = str(task.get("task_type") or "")
         label = f"{localize_task_priority(task.get('priority'))} · {task.get('title')}"
         with st.expander(label):
             st.caption(task.get("description") or "—")
+            if is_executable_task(task_type):
+                st.caption("该任务支持在任务中心一键执行。")
+            else:
+                guidance = get_task_guidance(task_type) or "该任务需人工处理，不支持一键执行。"
+                st.info(f"前往处理说明：{guidance}")
+
             note = st.text_input("备注", key=f"{key_prefix}_note_{task_id}")
+
+            if is_executable_task(task_type):
+                if st.button("执行任务", key=f"{key_prefix}_exec_{task_id}", type="primary"):
+                    with st.spinner("正在执行任务..."):
+                        with db_session() as conn:
+                            result = execute_task(conn, settings, task_id)
+                    if result.success:
+                        st.success("任务执行成功，已刷新任务列表。")
+                    else:
+                        st.error(f"任务执行失败：{result.message}")
+                        if result.detail:
+                            st.caption(result.detail)
+                    st.rerun()
+
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("标记完成", key=f"{key_prefix}_done_{task_id}"):
@@ -73,7 +101,7 @@ def _render_task_actions(tasks: list[dict], *, key_prefix: str) -> None:
                         complete_task(conn, task_id, note=note or None)
                     st.rerun()
             with col2:
-                if st.button("跳过", key=f"{key_prefix}_skip_{task_id}"):
+                if st.button("跳过任务", key=f"{key_prefix}_skip_{task_id}"):
                     with db_session() as conn:
                         skip_task(conn, task_id, note=note or None)
                     st.rerun()
@@ -81,7 +109,11 @@ def _render_task_actions(tasks: list[dict], *, key_prefix: str) -> None:
 
 def render() -> None:
     st.title("任务中心")
-    st.info("任务中心仅用于投资流程提醒，不构成投资建议，不会自动交易。")
+    st.info(
+        "任务中心仅用于投资流程提醒，不构成投资建议，不会自动交易。"
+        "支持一键执行数据更新、信号生成、报告生成等安全任务；"
+        "涉及持仓、交易和审核的任务仍需人工处理。"
+    )
 
     settings = load_settings()
     task_date = st.date_input("任务日期", value=date.today())
@@ -118,11 +150,11 @@ def render() -> None:
 
     st.subheader("今日任务")
     _render_task_table(tasks, empty_message="今日暂无任务，可点击「刷新今日任务」生成。")
-    _render_task_actions(tasks, key_prefix=f"today_{task_date_str}")
+    _render_task_actions(tasks, settings=settings, key_prefix=f"today_{task_date_str}")
 
     st.subheader("风险任务")
     _render_task_table(risk_tasks, empty_message="当前没有待处理的风险任务。")
-    _render_task_actions(risk_tasks, key_prefix=f"risk_{task_date_str}")
+    _render_task_actions(risk_tasks, settings=settings, key_prefix=f"risk_{task_date_str}")
 
     st.subheader("历史任务")
     status_filter = st.selectbox(

@@ -11,8 +11,9 @@ from loguru import logger
 
 from src.config.settings import load_settings
 from src.db.connection import db_session, ensure_database_dir, get_database_path
+from src.db.repository import get_latest_strategy_signals
 from src.strategy.rule_engine import get_action_label
-from src.strategy.signal_generator import SnapshotRequiredError, generate_and_save_signals
+from src.workflows.daily_workflow import run_generate_signals
 
 
 def main() -> None:
@@ -20,20 +21,20 @@ def main() -> None:
     db_path = ensure_database_dir(get_database_path())
 
     with db_session(db_path) as conn:
-        try:
-            signals, context = generate_and_save_signals(conn, settings)
-        except SnapshotRequiredError as exc:
-            raise SystemExit(str(exc)) from exc
+        result = run_generate_signals(conn, settings)
+        if not result.success:
+            raise SystemExit(result.message)
+        signal_rows = get_latest_strategy_signals(conn)
 
-    logger.info("Generated {} strategy signals for {}", len(signals), context["signal_date"])
-    for signal in signals:
+    logger.info(result.message)
+    for row in signal_rows:
         logger.info(
             "{} | score={:.1f} | {} | amount={:.0f} | {}",
-            signal.symbol,
-            signal.final_score,
-            get_action_label(signal.action, settings),
-            signal.suggested_amount,
-            signal.reason,
+            row["symbol"],
+            row["final_score"],
+            get_action_label(row["action"], settings),
+            row["suggested_amount"],
+            row["reason"],
         )
 
 
