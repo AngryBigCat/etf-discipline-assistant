@@ -64,7 +64,7 @@ def _render_result_summary(run: dict, result: dict) -> None:
     )
 
 
-def _render_charts(equity_curve: list[dict]) -> None:
+def _render_charts(equity_curve: list[dict], *, key_prefix: str) -> None:
     if not equity_curve:
         st.info("暂无净值曲线数据")
         return
@@ -79,7 +79,7 @@ def _render_charts(equity_curve: list[dict]) -> None:
         )
     )
     fig_total.update_layout(title="总资产曲线", xaxis_title="日期", yaxis_title="总资产")
-    st.plotly_chart(fig_total, use_container_width=True)
+    st.plotly_chart(fig_total, use_container_width=True, key=f"{key_prefix}_total_value")
 
     fig_drawdown = go.Figure()
     fig_drawdown.add_trace(
@@ -91,7 +91,7 @@ def _render_charts(equity_curve: list[dict]) -> None:
         )
     )
     fig_drawdown.update_layout(title="回撤曲线", xaxis_title="日期", yaxis_title="回撤")
-    st.plotly_chart(fig_drawdown, use_container_width=True)
+    st.plotly_chart(fig_drawdown, use_container_width=True, key=f"{key_prefix}_drawdown")
 
 
 def _render_trades(trades: list[dict]) -> None:
@@ -116,14 +116,14 @@ def _render_trades(trades: list[dict]) -> None:
     st.dataframe(rename_columns(trade_df), use_container_width=True, hide_index=True)
 
 
-def _render_detail(detail: dict) -> None:
+def _render_detail(detail: dict, *, key_prefix: str) -> None:
     run = detail.get("run") or {}
     result = detail.get("result") or {}
     if not run or not result:
         st.warning("未找到回测详情")
         return
     _render_result_summary(run, result)
-    _render_charts(detail.get("equity_curve") or [])
+    _render_charts(detail.get("equity_curve") or [], key_prefix=key_prefix)
     _render_trades(detail.get("trades") or [])
 
 
@@ -153,7 +153,7 @@ def _render_history(rows: list) -> None:
         with st.expander(label):
             with get_connection() as conn:
                 detail = load_backtest_detail(conn, int(row["id"]))
-            _render_detail(detail)
+            _render_detail(detail, key_prefix=f"history_{row['id']}")
 
 
 def render() -> None:
@@ -210,7 +210,7 @@ def render() -> None:
             detail = load_backtest_detail(conn, int(latest_run_id))
         if detail:
             st.subheader("本次回测结果")
-            _render_detail(detail)
+            _render_detail(detail, key_prefix=f"latest_{latest_run_id}")
 
     with get_connection() as conn:
         history_rows = list_backtest_runs(conn, limit=20)
