@@ -20,7 +20,7 @@ from src.db.schema import init_schema
 from src.tasks.generators import generate_all_tasks, generate_daily_tasks, generate_weekly_tasks
 from src.tasks.rules import ALL_TASK_TYPES, TASK_GENERATE_AI_DAILY_REVIEW, TASK_INPUT_HOLDING_SNAPSHOT
 from src.tasks.rules import TASK_RECORD_TRADE_LOG, TASK_REVIEW_STRATEGY_SIGNAL, TASK_UNREVIEWED_SIGNAL
-from src.tasks.rules import TASK_UPDATE_MARKET_DATA
+from src.tasks.rules import TASK_STALE_MARKET_DATA, TASK_UPDATE_MARKET_DATA
 from src.tasks.rules import TASK_GENERATE_WEEKLY_REPORT, TASK_EXCEED_MAX_POSITION
 from src.strategy.rule_engine import ACTION_STRONG_BUY
 from src.tasks.service import refresh_tasks_for_date
@@ -105,11 +105,12 @@ def _seed_snapshot(
     )
 
 
-def test_generate_update_market_data_when_prices_missing(memory_conn, settings):
+def test_stale_market_data_only_generates_update_market_data_task(memory_conn, settings):
     _seed_universe(memory_conn, settings)
-    tasks = generate_daily_tasks(memory_conn, settings, "2026-05-23")
+    tasks = generate_all_tasks(memory_conn, settings, "2026-05-23")
     task_types = {task.task_type for task in tasks}
     assert TASK_UPDATE_MARKET_DATA in task_types
+    assert TASK_STALE_MARKET_DATA not in task_types
 
 
 def test_generate_input_holding_snapshot_when_missing(memory_conn, settings):

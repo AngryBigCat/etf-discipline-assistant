@@ -45,7 +45,6 @@ from src.tasks.rules import (
     TASK_RECORD_TRADE_LOG,
     TASK_REVIEW_STRATEGY_SIGNAL,
     TASK_REVIEW_WEEKLY_DISCIPLINE,
-    TASK_STALE_MARKET_DATA,
     TASK_UPDATE_MARKET_DATA,
     TASK_WATCH_ONLY_OVERWEIGHT,
 )
@@ -353,25 +352,6 @@ def generate_weekly_tasks(conn, settings: dict[str, Any], task_date: str) -> lis
 
 def generate_risk_tasks(conn, settings: dict[str, Any], task_date: str) -> list[TaskItem]:
     tasks: list[TaskItem] = []
-    latest_price_date = _latest_market_date(conn)
-
-    if latest_price_date is None or latest_price_date < task_date:
-        tasks.append(
-            TaskItem(
-                task_date=task_date,
-                category=TASK_CATEGORY_RISK,
-                task_type=TASK_STALE_MARKET_DATA,
-                title="行情数据可能过期",
-                description=(
-                    f"最新行情日期为 {latest_price_date or '无'}，"
-                    "可能影响策略信号与仓位判断，请尽快更新。"
-                ),
-                priority=TASK_PRIORITY_NORMAL,
-                source_type="daily_price",
-                source_key="stale",
-                due_date=task_date,
-            )
-        )
 
     if not _has_snapshot_for_date(conn, task_date):
         tasks.append(
