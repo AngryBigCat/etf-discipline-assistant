@@ -409,3 +409,87 @@ def get_portfolio_overview(conn: sqlite3.Connection, settings: dict[str, Any]) -
         "positions": [row.__dict__ for row in position_rows],
         "alerts": [alert.__dict__ for alert in build_alerts(position_rows)],
     }
+
+
+def upsert_strategy_signals(conn: sqlite3.Connection, rows: list[dict[str, Any]]) -> int:
+    if not rows:
+        return 0
+    sql = """
+    INSERT INTO strategy_signal (
+        signal_date, symbol, trend_score, drawdown_score, volatility_score,
+        position_score, anti_chase_score, final_score, action, suggested_amount,
+        reason, confidence_level, review_status
+    ) VALUES (
+        :signal_date, :symbol, :trend_score, :drawdown_score, :volatility_score,
+        :position_score, :anti_chase_score, :final_score, :action, :suggested_amount,
+        :reason, :confidence_level, :review_status
+    )
+    ON CONFLICT(signal_date, symbol) DO UPDATE SET
+        trend_score = excluded.trend_score,
+        drawdown_score = excluded.drawdown_score,
+        volatility_score = excluded.volatility_score,
+        position_score = excluded.position_score,
+        anti_chase_score = excluded.anti_chase_score,
+        final_score = excluded.final_score,
+        action = excluded.action,
+        suggested_amount = excluded.suggested_amount,
+        reason = excluded.reason,
+        confidence_level = excluded.confidence_level,
+        review_status = excluded.review_status
+    """
+    conn.executemany(sql, rows)
+    return len(rows)
+
+
+def get_strategy_signals_by_date(conn: sqlite3.Connection, signal_date: str) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT ss.*, eu.name
+        FROM strategy_signal ss
+        LEFT JOIN etf_universe eu ON ss.symbol = eu.symbol
+        WHERE ss.signal_date = ?
+        ORDER BY ss.symbol
+        """,
+        (signal_date,),
+    )
+    return cur.fetchall()
+
+
+def get_latest_strategy_signal_date(conn: sqlite3.Connection) -> str | None:
+    cur = conn.execute("SELECT MAX(signal_date) AS max_date FROM strategy_signal")
+    row = cur.fetchone()
+    if row is None or row["max_date"] is None:
+        return None
+    return str(row["max_date"])
+
+
+def get_latest_strategy_signals(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    signal_date = get_latest_strategy_signal_date(conn)
+    if signal_date is None:
+        return []
+    return get_strategy_signals_by_date(conn, signal_date)
+
+
+def update_strategy_signal_review_status(
+    conn: sqlite3.Connection,
+    signal_id: int,
+    review_status: str,
+) -> None:
+    if review_status == "reviewed":
+        conn.execute(
+            """
+            UPDATE strategy_signal
+            SET review_status = ?, reviewed_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (review_status, signal_id),
+        )
+        return
+    conn.execute(
+        """
+        UPDATE strategy_signal
+        SET review_status = ?, reviewed_at = NULL
+        WHERE id = ?
+        """,
+        (review_status, signal_id),
+    )

@@ -39,6 +39,17 @@ FIELD_LABELS = {
     "status": "仓位状态",
     "quantity": "持仓数量",
     "latest_price": "最新价",
+    "signal_date": "信号日期",
+    "final_score": "纪律分数",
+    "trend_score": "趋势分",
+    "drawdown_score": "回撤分",
+    "anti_chase_score": "反追高分",
+    "position_score": "仓位分",
+    "special_score": "特殊规则分",
+    "action": "操作建议",
+    "suggested_amount": "建议金额",
+    "review_status": "审核状态",
+    "reason": "原因说明",
 }
 
 ROLE_LABELS = {
@@ -70,6 +81,20 @@ BOOLEAN_LABELS = {
     0: "否",
 }
 
+ACTION_LABELS = {
+    "strong_buy": "可正常买入",
+    "small_buy": "可小额买入",
+    "fixed_invest": "仅按定投计划",
+    "hold": "观察，不主动买入",
+    "stop_buy": "暂停买入",
+}
+
+REVIEW_STATUS_LABELS = {
+    "generated": "系统生成",
+    "reviewed": "已查看",
+    "ignored": "已忽略",
+}
+
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={col: FIELD_LABELS.get(col, col) for col in df.columns})
@@ -89,3 +114,16 @@ def localize_confidence(value: object) -> object:
 
 def localize_bool(value: object) -> object:
     return BOOLEAN_LABELS.get(value, value)
+
+
+def localize_action(value: object, settings: dict | None = None) -> object:
+    if settings:
+        from src.strategy.rule_engine import get_action_label
+
+        if isinstance(value, str):
+            return get_action_label(value, settings)
+    return ACTION_LABELS.get(value, value)
+
+
+def localize_review_status(value: object) -> object:
+    return REVIEW_STATUS_LABELS.get(value, value)

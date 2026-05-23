@@ -18,6 +18,7 @@ page = st.navigation(
         st.Page("pages/dashboard.py", title="数据看板", default=True),
         st.Page("pages/holdings_entry.py", title="持仓录入"),
         st.Page("pages/position_mgmt.py", title="仓位管理"),
+        st.Page("pages/strategy_signals.py", title="策略信号"),
     ]
 )
 page.run()
