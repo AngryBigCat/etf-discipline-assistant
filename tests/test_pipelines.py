@@ -50,9 +50,19 @@ def test_daily_pipeline_runs_steps_in_order(
 
     mock_market.side_effect = _track("market_update", WorkflowResult(success=True, message="ok"))
     mock_signals.side_effect = _track("generate_signals", WorkflowResult(success=True, message="ok"))
-    mock_refresh.side_effect = _track("refresh_tasks", WorkflowResult(success=True, message="ok"))
     mock_report.side_effect = _track("daily_report", WorkflowResult(success=True, message="ok"))
     mock_ai.side_effect = _track("ai_daily_review", WorkflowResult(success=True, message="ok"))
+
+    refresh_call_count = 0
+
+    def refresh_side_effect(*args, **kwargs):
+        nonlocal refresh_call_count
+        refresh_call_count += 1
+        step_name = "refresh_tasks" if refresh_call_count == 1 else "refresh_tasks_final"
+        call_order.append(step_name)
+        return WorkflowResult(success=True, message="ok")
+
+    mock_refresh.side_effect = refresh_side_effect
 
     result = run_daily_pipeline(memory_conn, settings, run_date="2026-05-23")
 
@@ -63,9 +73,11 @@ def test_daily_pipeline_runs_steps_in_order(
         "refresh_tasks",
         "daily_report",
         "ai_daily_review",
+        "refresh_tasks_final",
     ]
     steps = json.loads(result.detail or "[]")
-    assert len(steps) == 5
+    assert len(steps) == 6
+    assert [step["step"] for step in steps] == call_order
     assert all(step["success"] for step in steps)
 
 

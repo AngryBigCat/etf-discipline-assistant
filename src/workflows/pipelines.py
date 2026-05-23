@@ -87,6 +87,10 @@ def run_daily_pipeline(
             "ai_daily_review",
             lambda: run_generate_ai_daily_review(conn, settings, report_date),
         ),
+        (
+            "refresh_tasks_final",
+            lambda: _run_refresh_tasks(conn, settings, report_date),
+        ),
     ]
     return _run_pipeline_steps(steps, pipeline_name="每日收盘后流程")
 
