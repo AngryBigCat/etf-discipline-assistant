@@ -8,6 +8,7 @@ from typing import Any
 
 import yaml
 from dotenv import load_dotenv
+from loguru import logger
 
 from src.assets.queries import (
     list_enabled_portfolio_assets as _list_enabled_portfolio_assets,
@@ -29,7 +30,17 @@ def get_config_path() -> Path:
         if not path.is_absolute():
             path = get_project_root() / path
         return path
-    return get_project_root() / "config.yaml"
+
+    default_path = get_project_root() / "config" / "app.yaml"
+    legacy_path = get_project_root() / "config.yaml"
+    if default_path.exists():
+        return default_path
+    if legacy_path.exists():
+        logger.warning(
+            "根目录 config.yaml 已弃用，请迁移到 config/app.yaml"
+        )
+        return legacy_path
+    return default_path
 
 
 def get_database_path() -> Path:

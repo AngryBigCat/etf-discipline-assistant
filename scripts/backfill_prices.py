@@ -19,7 +19,7 @@ from src.utils.network import build_network_hint, get_system_proxies
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Backfill ETF historical prices via AKShare")
-    parser.add_argument("--symbol", default=None, help="Symbol from config.yaml, e.g. A500")
+    parser.add_argument("--symbol", default=None, help="Symbol from etf_universe, e.g. A500")
     parser.add_argument("--all", action="store_true", help="Backfill all enabled symbols")
     parser.add_argument("--start", dest="start_date", default="2021-01-01")
     parser.add_argument("--end", dest="end_date", default=None)

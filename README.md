@@ -170,7 +170,7 @@
 ### 阶段 11：系统设置 / 配置中心
 
 - 新增 Streamlit「系统设置」页，集中维护投资纪律参数
-- 配置编辑 service（`src/config/editor.py`）：读取、校验、保存 `config.yaml`，保存前自动备份到 `backups/config/`
+- 配置编辑 service（`src/config/editor.py`）：读取、校验、保存 `config/app.yaml`，保存前自动备份到 `backups/config/`
 - 可编辑：计划总投入、现金缓冲比例、基准货币、ETF 名称/角色/是否参与策略信号/目标仓位/最大仓位、策略分数阈值与均线参数
 - 只读展示：回撤窗口、反追高参数、AI 提供商/模型、API Key 配置状态（**不展示 API Key 明文**）
 - **修改配置不会自动交易，不会自动修改持仓/交易日志/策略信号；不构成投资建议**
@@ -186,9 +186,9 @@
 ### 阶段 11.2：标的池数据库化
 
 - **`etf_universe` 为标的池唯一主数据源**；系统设置页新增 / 编辑 / 停用标的直接读写数据库
-- `config.yaml` 中的 `assets` **已迁移为** `config/assets.seed.yaml`（初始化种子文件）
+- 标的池 `assets` **已迁移为** `config/assets.seed.yaml`（初始化种子文件）；系统主配置位于 `config/app.yaml`
 - 初始化脚本：`scripts/seed_data.py`、`scripts/sync_assets_from_seed.py`（旧 `sync_assets_from_config.py` 仍兼容）
-- 保存系统配置（`save_editable_config`）**不再写入或覆盖** `config.yaml` 的 `assets`，也不会同步覆盖 `etf_universe`
+- 保存系统配置（`save_editable_config`）**不再写入或覆盖** 标的池配置，也不会同步覆盖 `etf_universe`
 - 校验逻辑位于 `src/assets/validator.py`；仓库操作位于 `src/db/repository.py`
 - 行情更新、策略信号、任务中心、回测选择、持仓录入等优先从 `etf_universe` 读取
 - **停用标的不删除历史行情 / 交易 / 持仓 / 策略信号**
@@ -257,26 +257,29 @@ python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --c
 
 ## 配置说明
 
-主要配置在 `config.yaml`（可在 Streamlit「系统设置」页编辑并保存，保存前会自动备份）：
+配置文件统一放在 `config/` 目录：
 
-- ETF 标的
-- 真实基金代码
-- 目标仓位
-- 最大仓位
-- 单次买入比例
-- 是否启用
-- 是否参与策略信号
-- 计划总投入、现金缓冲比例、策略分数阈值等纪律参数
+- **`config/app.yaml`**：系统主配置（计划总投入、现金缓冲、策略阈值、仓位参数等；可在 Streamlit「系统设置」页编辑并保存，保存前会自动备份）
+- **`config/assets.seed.yaml`**：默认标的池种子（仅用于初始化导入，不是日常编辑源）
+- **`etf_universe`（数据库）**：运行时标的池主数据源
+
+`config/app.yaml` 主要包含：
+
+- 计划总投入、现金缓冲比例、基准货币
+- 策略分数阈值与均线参数
+- 单次买入比例等纪律参数
 
 说明：
 
 - **`etf_universe` 是标的池主数据源**；默认标的见 `config/assets.seed.yaml`，通过 `scripts/sync_assets_from_seed.py` 导入
-- 系统设置页的标的池增删改直接写入数据库，**不会写回** `config.yaml` 的 `assets`
+- 系统设置页的标的池增删改直接写入数据库，**不会写回** `config/assets.seed.yaml` 或 `config/app.yaml`
 - API Key 仅通过 `.env` 配置；系统设置页只显示「已配置 / 未配置」，**不会展示 API Key 明文**
+- 可通过 `CONFIG_PATH` 环境变量覆盖主配置文件路径（相对路径基于项目根目录解析）；若 `config/app.yaml` 不存在但根目录仍有旧版 `config.yaml`，系统会临时回退并提示迁移
 
 可选环境变量在 `.env`（可复制 `.env.example` 后修改，**不要提交 `.env` 到 Git**）：
 
 - `DATABASE_PATH`
+- `CONFIG_PATH`（默认 `config/app.yaml`）
 - `PRICE_DATA_SOURCE=auto|akshare|mock`（默认 `auto`：东方财富 → 新浪，失败报错；`mock` 仅用于离线测试）
 - `LLM_PROVIDER=mock|openai_compatible`
 - `LLM_API_KEY`
