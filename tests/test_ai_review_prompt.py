@@ -88,6 +88,8 @@ def test_daily_prompt_contains_safety_constraints(memory_conn, settings):
     assert "你不能预测市场涨跌" in prompt["system"]
     assert "不构成投资建议" in prompt["system"]
     assert "你不能推荐个股" in prompt["system"]
+    assert "你不能直接建议用户买入" in prompt["system"]
+    assert "系统信号显示" in prompt["system"]
 
 
 def test_weekly_prompt_contains_trade_stats(memory_conn, settings):

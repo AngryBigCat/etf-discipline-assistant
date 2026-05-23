@@ -6,13 +6,12 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 
+from src.ai_review.output_parser import build_review_display
 from src.ai_review.review_service import generate_daily_ai_review, generate_weekly_ai_review
 from src.config.settings import load_settings
 from src.db.connection import db_session, get_connection
 from src.db.repository import get_latest_ai_reviews
 from src.ui.labels import localize_ai_status, localize_review_type, rename_columns
-
-_SECTION_RE = re.compile(r"^### (.+)\n+(.*?)(?=^### |\Z)", re.MULTILINE | re.DOTALL)
 
 
 def _preview(text: str | None, max_len: int = 80) -> str:
@@ -24,38 +23,32 @@ def _preview(text: str | None, max_len: int = 80) -> str:
     return plain[:max_len] + "…"
 
 
-def _extract_sections(text: str | None) -> dict[str, str]:
-    if not text:
-        return {}
-    sections: dict[str, str] = {}
-    for match in _SECTION_RE.finditer(text):
-        sections[match.group(1).strip()] = match.group(2).strip()
-    return sections
-
-
 def _render_review_sections(review: dict, *, weekly: bool = False) -> None:
-    sections = _extract_sections(review.get("output_text"))
-    st.markdown("#### 纪律总结")
-    st.markdown(review.get("discipline_summary") or sections.get("纪律总结") or "—")
+    display = build_review_display(review, weekly=weekly)
 
-    behavior_title = "行为模式" if weekly else "行为发现"
-    st.markdown(f"#### {behavior_title}")
-    st.markdown(sections.get("行为发现") or "—")
+    st.markdown("#### 纪律总结")
+    st.markdown(display["discipline_summary"])
+
+    st.markdown(f"#### {display['behavior_title']}")
+    st.markdown(display["behavior"])
 
     st.markdown("#### 风险提醒")
-    st.markdown(review.get("risk_summary") or sections.get("风险提醒") or "—")
+    st.markdown(display["risk_summary"])
 
-    suggestion_title = "下周纪律建议" if weekly else "下个交易日纪律建议"
-    st.markdown(f"#### {suggestion_title}")
-    st.markdown(review.get("action_suggestion") or sections.get("纪律建议") or "—")
+    st.markdown(f"#### {display['action_title']}")
+    st.markdown(display["action_suggestion"])
 
-    st.markdown("#### 原始输出")
-    st.markdown(review.get("output_text") or "—")
+    if display["final_note"] != "—":
+        st.markdown("#### 说明")
+        st.markdown(display["final_note"])
 
     if review.get("status") == "blocked":
         st.error(review.get("error_message") or "输出包含需屏蔽的表述。")
     elif review.get("status") == "failed":
         st.warning(review.get("error_message") or "AI 生成失败。")
+
+    with st.expander("查看原始模型输出"):
+        st.markdown(display["raw_output"] or "—")
 
 
 def _render_history(rows: list) -> None:

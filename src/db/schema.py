@@ -176,6 +176,7 @@ SCHEMA_STATEMENTS: list[str] = [
         input_snapshot TEXT,
         output_text TEXT,
         discipline_summary TEXT,
+        behavior_findings TEXT,
         risk_summary TEXT,
         action_suggestion TEXT,
         status TEXT DEFAULT 'success',
@@ -210,19 +211,22 @@ def apply_schema_migrations(conn: sqlite3.Connection) -> None:
                 "ALTER TABLE strategy_signal ADD COLUMN special_score REAL DEFAULT 0"
             )
 
-    if not _table_exists(conn, "trade_log"):
-        return
+    if _table_exists(conn, "trade_log"):
+        trade_log_columns = {
+            "suggested_amount": "REAL DEFAULT 0",
+            "deviation_amount": "REAL DEFAULT 0",
+            "execution_status": "TEXT DEFAULT 'recorded'",
+        }
+        for column_name, column_def in trade_log_columns.items():
+            if not _table_has_column(conn, "trade_log", column_name):
+                conn.execute(
+                    f"ALTER TABLE trade_log ADD COLUMN {column_name} {column_def}"
+                )
 
-    trade_log_columns = {
-        "suggested_amount": "REAL DEFAULT 0",
-        "deviation_amount": "REAL DEFAULT 0",
-        "execution_status": "TEXT DEFAULT 'recorded'",
-    }
-    for column_name, column_def in trade_log_columns.items():
-        if not _table_has_column(conn, "trade_log", column_name):
-            conn.execute(
-                f"ALTER TABLE trade_log ADD COLUMN {column_name} {column_def}"
-            )
+    if _table_exists(conn, "ai_review") and not _table_has_column(
+        conn, "ai_review", "behavior_findings"
+    ):
+        conn.execute("ALTER TABLE ai_review ADD COLUMN behavior_findings TEXT")
 
 
 def init_schema(conn: sqlite3.Connection) -> None:

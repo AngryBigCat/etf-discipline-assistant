@@ -131,6 +131,7 @@ def test_generate_daily_ai_review_persists(memory_conn, settings):
     assert stored is not None
     assert review is not None
     assert stored["discipline_summary"] == review["discipline_summary"]
+    assert stored["behavior_findings"]
     assert "不构成投资建议" in stored["output_text"]
 
 
@@ -171,7 +172,7 @@ def test_full_position_risk_warnings_not_blocked(text):
     assert "[已屏蔽]" not in cleaned
 
 
-@pytest.mark.parametrize("phrase", ["建议满仓", "可以满仓", "必须满仓"])
+@pytest.mark.parametrize("phrase", ["建议满仓", "可以满仓", "必须满仓", "直接满仓"])
 def test_full_position_recommendations_blocked(phrase):
     cleaned, status, error_message = validate_ai_review_output(f"复盘结论：{phrase}。")
     assert status == "blocked"
@@ -180,7 +181,7 @@ def test_full_position_recommendations_blocked(phrase):
     assert "[已屏蔽]" in cleaned
 
 
-@pytest.mark.parametrize("word", ["保证收益", "必涨", "必买", "建议满仓", "可以满仓", "必须满仓"])
+@pytest.mark.parametrize("word", ["保证收益", "必涨", "必买", "建议满仓", "可以满仓", "必须满仓", "直接满仓"])
 def test_dangerous_words_blocked(memory_conn, settings, word):
     _seed(memory_conn, settings)
     review, saved, _ = generate_daily_ai_review(

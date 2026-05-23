@@ -63,6 +63,7 @@ FIELD_LABELS = {
     "summary": "概况",
     "risk_warning": "风险提示",
     "discipline_summary": "纪律统计",
+    "behavior_findings": "行为发现",
     "risk_summary": "风险摘要",
     "action_suggestion": "操作建议",
     "total_position": "ETF 总仓位",

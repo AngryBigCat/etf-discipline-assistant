@@ -691,11 +691,11 @@ def upsert_ai_review(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
     INSERT INTO ai_review (
         review_type, target_date, week_start, week_end, source_type, source_digest,
         prompt_version, provider, model, input_snapshot, output_text,
-        discipline_summary, risk_summary, action_suggestion, status, error_message
+        discipline_summary, behavior_findings, risk_summary, action_suggestion, status, error_message
     ) VALUES (
         :review_type, :target_date, :week_start, :week_end, :source_type, :source_digest,
         :prompt_version, :provider, :model, :input_snapshot, :output_text,
-        :discipline_summary, :risk_summary, :action_suggestion, :status, :error_message
+        :discipline_summary, :behavior_findings, :risk_summary, :action_suggestion, :status, :error_message
     )
     ON CONFLICT(review_type, target_date, week_start, week_end, prompt_version) DO UPDATE SET
         source_type = excluded.source_type,
@@ -705,6 +705,7 @@ def upsert_ai_review(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
         input_snapshot = excluded.input_snapshot,
         output_text = excluded.output_text,
         discipline_summary = excluded.discipline_summary,
+        behavior_findings = excluded.behavior_findings,
         risk_summary = excluded.risk_summary,
         action_suggestion = excluded.action_suggestion,
         status = excluded.status,

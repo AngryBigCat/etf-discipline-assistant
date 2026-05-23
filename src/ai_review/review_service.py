@@ -15,7 +15,7 @@ from src.ai_review.prompt_builder import (
     build_weekly_review_prompt,
     dumps_context_for_snapshot,
 )
-from src.ai_review.safety import sanitize_prompt_context, validate_ai_review_output
+from src.ai_review.safety import rewrite_trading_advice_phrases, sanitize_prompt_context, validate_ai_review_output
 from src.db.repository import upsert_ai_review
 
 
@@ -56,6 +56,10 @@ def _compose_output_text(parsed: dict[str, Any], raw_text: str) -> str:
     return "\n\n".join(part for part in parts if part.strip())
 
 
+def _clean_field(value: Any) -> str:
+    return rewrite_trading_advice_phrases(_join_list(value) if isinstance(value, list) else str(value or ""))
+
+
 def _build_review_row(
     *,
     review_type: str,
@@ -85,9 +89,10 @@ def _build_review_row(
         "model": model,
         "input_snapshot": input_snapshot,
         "output_text": output_text,
-        "discipline_summary": str(parsed.get("discipline_summary") or ""),
-        "risk_summary": _join_list(parsed.get("risk_summary")),
-        "action_suggestion": _join_list(parsed.get("action_suggestion")),
+        "discipline_summary": _clean_field(parsed.get("discipline_summary")),
+        "behavior_findings": _clean_field(parsed.get("behavior_findings")),
+        "risk_summary": _clean_field(parsed.get("risk_summary")),
+        "action_suggestion": _clean_field(parsed.get("action_suggestion")),
         "status": status,
         "error_message": error_message,
     }
