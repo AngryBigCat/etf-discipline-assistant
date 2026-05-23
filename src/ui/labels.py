@@ -9,6 +9,7 @@ FIELD_LABELS = {
     "exchange": "交易所",
     "role": "资产角色",
     "enabled_for_signal": "是否参与策略信号",
+    "enabled": "是否启用",
     "trade_date": "交易日期",
     "close": "收盘价",
     "open": "开盘价",

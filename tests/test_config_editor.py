@@ -17,6 +17,7 @@ from src.config.editor import (
     save_editable_config,
     sum_etf_target_weights,
     validate_editable_config,
+    validate_new_asset,
 )
 from src.config.settings import load_settings
 from src.db.repository import upsert_etf_universe, upsert_strategy_signals
@@ -121,12 +122,82 @@ def test_validate_target_weight_sum_cannot_exceed_100_percent(sample_config: dic
 
 def test_sum_etf_target_weights_excludes_cash_role_when_symbol_is_not_cash():
     assets = [
-        {"symbol": "A500", "role": "core", "target_weight": 0.50},
-        {"symbol": "MONEY", "role": "cash", "target_weight": 0.20},
+        {"symbol": "A500", "role": "core", "target_weight": 0.50, "enabled": True},
+        {"symbol": "MONEY", "role": "cash", "target_weight": 0.20, "enabled": True},
     ]
 
     assert sum_etf_target_weights(assets) == 0.50
     assert compute_implicit_cash_target_weight(assets) == 0.50
+
+
+def test_sum_etf_target_weights_excludes_disabled_assets():
+    assets = [
+        {"symbol": "A500", "role": "core", "target_weight": 0.50, "enabled": True},
+        {"symbol": "OLD", "role": "satellite", "target_weight": 0.30, "enabled": False},
+    ]
+
+    assert sum_etf_target_weights(assets) == 0.50
+
+
+def test_validate_new_asset_rejects_empty_symbol(sample_config: dict):
+    errors = validate_new_asset({"symbol": "  "}, sample_config["assets"])
+    assert any("标的代码不能为空" in error for error in errors)
+
+
+def test_validate_new_asset_rejects_duplicate_symbol(sample_config: dict):
+    errors = validate_new_asset(
+        {"symbol": "a500", "name": "重复", "enabled": True},
+        sample_config["assets"],
+    )
+    assert any("不能重复" in error for error in errors)
+
+
+def test_validate_editable_config_rejects_duplicate_symbols(sample_config: dict):
+    duplicate = copy.deepcopy(sample_config)
+    duplicate["assets"].append(
+        {
+            "symbol": "A500",
+            "name": "重复",
+            "fund_code": "512050",
+            "enabled": True,
+            "enabled_for_signal": False,
+            "target_weight": 0,
+            "max_weight": 0,
+        }
+    )
+    errors = validate_editable_config(duplicate)
+    assert any("不能重复" in error for error in errors)
+
+
+def test_validate_enabled_for_signal_requires_enabled(sample_config: dict):
+    broken = copy.deepcopy(sample_config)
+    broken["assets"][0]["enabled"] = False
+    broken["assets"][0]["enabled_for_signal"] = True
+    errors = validate_editable_config(broken)
+    assert any("参与策略信号时必须启用" in error for error in errors)
+
+
+def test_validate_enabled_for_signal_requires_fund_code(sample_config: dict):
+    broken = copy.deepcopy(sample_config)
+    broken["assets"][0]["enabled_for_signal"] = True
+    broken["assets"][0]["fund_code"] = ""
+    errors = validate_editable_config(broken)
+    assert any("基金代码" in error for error in errors)
+
+
+def test_disabled_assets_not_counted_in_target_weight_sum(sample_config: dict):
+    sample_config["assets"].append(
+        {
+            "symbol": "OLD",
+            "name": "停用标的",
+            "role": "satellite",
+            "enabled": False,
+            "enabled_for_signal": False,
+            "target_weight": 0.80,
+            "max_weight": 0.80,
+        }
+    )
+    assert validate_editable_config(sample_config) == []
 
 
 def test_save_editable_config_creates_backup(config_file: Path, sample_config: dict, tmp_path: Path, monkeypatch):
