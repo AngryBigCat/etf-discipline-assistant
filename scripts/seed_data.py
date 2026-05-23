@@ -9,16 +9,14 @@ if str(ROOT) not in sys.path:
 
 from loguru import logger
 
-from src.config.settings import load_settings
-from src.config.sync import sync_assets_from_config
+from src.config.sync import sync_assets_from_seed
 from src.db.connection import db_session, ensure_database_dir, get_database_path
 
 
 def main() -> None:
-    settings = load_settings()
     db_path = ensure_database_dir(get_database_path())
     with db_session(db_path) as conn:
-        stats = sync_assets_from_config(conn, settings, force=False)
+        stats = sync_assets_from_seed(conn, force=False)
     logger.info(
         "Seeded {} ETF universe records into {} (skipped {} disabled)",
         stats["imported"],

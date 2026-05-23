@@ -2,115 +2,17 @@ app:
   name: ETF投资纪律助手
   base_currency: CNY
   timezone: Asia/Shanghai
+
 portfolio:
   total_plan_amount: 100000.0
   max_total_position: 0.8
   normal_position: 0.5
   min_cash_position: 0.2
+
 risk_profile:
   name: 平衡型
   description: 以宽基ETF为核心，控制科创类高波动仓位，保留现金用于分批补仓。
-assets:
-- symbol: A500
-  name: 中证A500ETF
-  fund_code: '512050'
-  exchange: SH
-  index_code: '000510'
-  role: core
-  market: CN
-  target_weight: 0.5
-  max_weight: 0.65
-  single_buy_ratio: 0.03
-  risk_level: 3
-  enabled: true
-  enabled_for_signal: true
-- symbol: KC50
-  name: 科创50ETF
-  fund_code: '588000'
-  exchange: SH
-  index_code: 000688
-  role: satellite
-  market: CN
-  target_weight: 0.15
-  max_weight: 0.2
-  single_buy_ratio: 0.02
-  risk_level: 5
-  enabled: true
-  enabled_for_signal: true
-- symbol: HS300
-  name: 沪深300ETF
-  fund_code: '510300'
-  exchange: SH
-  index_code: '000300'
-  role: core_reference
-  market: CN
-  target_weight: 0.1
-  max_weight: 0.25
-  single_buy_ratio: 0.03
-  risk_level: 3
-  enabled: true
-  enabled_for_signal: true
-- symbol: DIVIDEND
-  name: 红利ETF
-  fund_code: '510880'
-  exchange: SH
-  index_code: '000015'
-  role: defensive
-  market: CN
-  target_weight: 0.1
-  max_weight: 0.2
-  single_buy_ratio: 0.02
-  risk_level: 2
-  enabled: true
-  enabled_for_signal: true
-- symbol: SP500
-  name: 标普500ETF
-  fund_code: '513500'
-  exchange: SH
-  index_code: ''
-  role: overseas
-  market: US
-  target_weight: 0.1
-  max_weight: 0.2
-  single_buy_ratio: 0.02
-  risk_level: 3
-  enabled: true
-  enabled_for_signal: false
-- symbol: NASDAQ100
-  name: 纳斯达克100ETF
-  fund_code: '513100'
-  exchange: SH
-  index_code: ''
-  role: overseas
-  market: US
-  target_weight: 0.05
-  max_weight: 0.1
-  single_buy_ratio: 0.02
-  risk_level: 3
-  enabled: true
-  enabled_for_signal: false
-- symbol: CASH
-  name: 现金/货币基金
-  fund_code: ''
-  exchange: ''
-  index_code: ''
-  role: cash
-  market: CASH
-  target_weight: 0.2
-  min_weight: 0.2
-  risk_level: 0
-  enabled: true
-  enabled_for_signal: false
-  max_weight: 0.2
-- symbol: SZ50
-  name: 深证50
-  fund_code: '159350'
-  exchange: 深证
-  role: satellite
-  enabled: true
-  enabled_for_signal: false
-  target_weight: 0.0
-  max_weight: 0.0
+
 strategy:
   trend:
     ma_short: 20
@@ -129,6 +31,7 @@ strategy:
     base_score: 50
     min_score: 0
     max_score: 100
+
 actions:
   strong_buy:
     min_score: 80

@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 import pytest
 
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.db.repository import (
     get_weekly_report,
@@ -39,7 +40,7 @@ def settings():
 
 
 def _seed_base(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     save_account_snapshot(
         memory_conn,
         {
@@ -213,7 +214,7 @@ def test_upsert_weekly_report_overwrites_same_week(memory_conn):
 
 
 def test_weekly_report_without_account_snapshot(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     report, saved, message = build_and_save_weekly_report(
         memory_conn,
         settings,

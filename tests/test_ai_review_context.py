@@ -11,6 +11,7 @@ from src.ai_review.context_builder import (
     build_daily_review_context,
     build_weekly_review_context,
 )
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.db.repository import (
     save_account_snapshot,
@@ -38,7 +39,7 @@ def settings():
 
 
 def _seed_base(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     save_account_snapshot(
         memory_conn,
         {

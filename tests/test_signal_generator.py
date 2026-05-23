@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 import pytest
 
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.db.repository import (
     get_strategy_signals_by_date,
@@ -33,7 +34,7 @@ def settings():
 
 
 def _seed_base(conn, settings, *, total_position=0.5, cash_position=0.5, holdings=None):
-    upsert_etf_universe(conn, settings["assets"])
+    upsert_etf_universe(conn, load_assets_seed())
     save_account_snapshot(
         conn,
         {

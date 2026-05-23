@@ -75,10 +75,7 @@ def test_save_editable_config_leaves_etf_universe_unchanged(tmp_path, memory_con
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         yaml.dump(
-            {
-                "portfolio": {"total_plan_amount": 100000},
-                "assets": [{"symbol": "A500", "name": "A500", "enabled": True, "target_weight": 0.5}],
-            },
+            {"portfolio": {"total_plan_amount": 100000}},
             allow_unicode=True,
         ),
         encoding="utf-8",
@@ -100,4 +97,4 @@ def test_save_editable_config_leaves_etf_universe_unchanged(tmp_path, memory_con
     assert float(row["target_weight"]) == 0.4
 
     saved = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    assert saved["assets"][0]["name"] == "A500"
+    assert "assets" not in saved

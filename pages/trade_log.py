@@ -22,6 +22,7 @@ from src.ui.labels import (
     localize_trade_action,
     rename_columns,
 )
+from src.ui.helpers import render_empty_universe_hint
 from src.utils.date_utils import today_str
 from src.utils.number_utils import format_number
 
@@ -29,6 +30,8 @@ from src.utils.number_utils import format_number
 def render() -> None:
     st.title("交易日志")
     st.caption("记录实际交易行为，用于复盘投资纪律")
+
+    render_empty_universe_hint()
 
     settings = load_settings()
     with get_connection() as conn:

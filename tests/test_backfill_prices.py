@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.data.backfill import backfill_all_prices, backfill_symbol_prices
 from src.db.repository import upsert_etf_universe
@@ -42,7 +43,7 @@ def _sample_price_df(symbol: str = "A500", count: int = 5) -> pd.DataFrame:
 
 
 def _seed_universe(conn, settings):
-    upsert_etf_universe(conn, settings["assets"])
+    upsert_etf_universe(conn, load_assets_seed())
 
 
 @patch("src.data.backfill.AkshareCollector.fetch_history")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from src.ui.helpers import load_dashboard_data
+from src.ui.helpers import EMPTY_UNIVERSE_HINT, load_dashboard_data, render_empty_universe_hint
 from src.ui.labels import localize_bool, localize_confidence, localize_role, rename_columns
 from src.utils.number_utils import format_number, format_pct
 
@@ -11,6 +11,8 @@ def render() -> None:
     st.title("数据看板")
     st.caption("标的列表、最新行情、基础指标")
 
+    render_empty_universe_hint()
+
     try:
         universe_df, prices_df, indicators_df = load_dashboard_data()
     except Exception as exc:
@@ -18,7 +20,7 @@ def render() -> None:
         st.stop()
 
     if universe_df.empty:
-        st.warning("ETF 标的池为空，请先运行 seed_data.py")
+        st.warning(EMPTY_UNIVERSE_HINT)
         st.stop()
 
     st.subheader("ETF 标的池")

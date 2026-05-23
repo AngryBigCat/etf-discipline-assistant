@@ -17,6 +17,7 @@ from src.backtest.service import (
 from src.config.settings import get_enabled_portfolio_assets, load_settings
 from src.db.connection import db_session, get_connection
 from src.db.repository import list_backtest_run_summaries
+from src.ui.helpers import EMPTY_UNIVERSE_HINT, render_empty_universe_hint
 from src.ui.labels import (
     localize_backtest_action,
     localize_backtest_frequency,
@@ -370,6 +371,8 @@ def _render_history(rows: list) -> None:
 def render() -> None:
     st.title("回测分析")
     st.info("回测仅用于历史规则验证，不代表未来收益，不构成投资建议。")
+
+    render_empty_universe_hint()
 
     settings = load_settings()
     with get_connection() as conn:

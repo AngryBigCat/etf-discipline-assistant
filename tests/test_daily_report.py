@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 import pytest
 
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.db.repository import (
     get_daily_report_by_date,
@@ -41,7 +42,7 @@ def settings():
 
 
 def _seed_base(memory_conn, settings, *, snapshot_date="2026-05-23"):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     save_account_snapshot(
         memory_conn,
         {
@@ -247,7 +248,7 @@ def test_upsert_daily_report_overwrites_same_date(memory_conn):
 
 
 def test_daily_report_without_account_snapshot(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     report, saved, message = build_and_save_daily_report(memory_conn, settings, "2026-05-23")
 
     assert saved is False

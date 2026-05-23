@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.db.repository import (
     list_task_action_logs,
@@ -72,7 +73,7 @@ def test_execute_task_action_rejects_non_executable(memory_conn, settings):
 @patch("src.tasks.actions.run_market_update")
 def test_execute_task_success_writes_log_and_marks_done(mock_run, memory_conn, settings):
     mock_run.return_value = WorkflowResult(success=True, message="行情更新完成")
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     tasks = refresh_tasks_for_date(memory_conn, settings, "2026-05-23")
     target = _find_task(tasks, TASK_UPDATE_MARKET_DATA)
     assert target is not None
@@ -99,7 +100,7 @@ def test_execute_task_success_writes_log_and_marks_done(mock_run, memory_conn, s
 @patch("src.tasks.actions.run_market_update")
 def test_execute_task_failure_keeps_pending(mock_run, memory_conn, settings):
     mock_run.return_value = WorkflowResult(success=False, message="行情更新失败", detail="network")
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     tasks = refresh_tasks_for_date(memory_conn, settings, "2026-05-23")
     target = _find_task(tasks, TASK_UPDATE_MARKET_DATA)
     assert target is not None
@@ -118,7 +119,7 @@ def test_execute_task_failure_keeps_pending(mock_run, memory_conn, settings):
 @patch("src.tasks.actions.run_generate_signals")
 def test_execute_task_does_not_auto_review_signals(mock_run, memory_conn, settings):
     mock_run.return_value = WorkflowResult(success=True, message="策略信号已生成")
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     upsert_strategy_signals(
         memory_conn,
         [
@@ -165,7 +166,7 @@ def test_execute_task_does_not_auto_review_signals(mock_run, memory_conn, settin
 @patch("src.tasks.actions.run_market_update")
 def test_execute_task_refreshes_tasks(mock_run, memory_conn, settings):
     mock_run.return_value = WorkflowResult(success=True, message="行情更新完成")
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     tasks = refresh_tasks_for_date(memory_conn, settings, "2026-05-23")
     target = _find_task(tasks, TASK_UPDATE_MARKET_DATA)
     assert target is not None

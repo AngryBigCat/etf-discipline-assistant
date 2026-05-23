@@ -5,7 +5,7 @@ from datetime import date
 
 import streamlit as st
 
-from src.assets.queries import list_all_assets, row_to_asset
+from src.assets.queries import list_all_assets
 from src.assets.validator import (
     compute_implicit_cash_target_weight,
     sum_etf_target_weights,
@@ -21,6 +21,7 @@ from src.config.editor import (
 )
 from src.db.connection import db_session, get_connection
 from src.db.repository import create_or_update_etf_asset, disable_etf_asset, update_etf_asset
+from src.ui.helpers import EMPTY_UNIVERSE_HINT
 from src.ui.labels import FIELD_LABELS, ROLE_LABELS, localize_role
 
 
@@ -211,13 +212,15 @@ def _render_add_asset_form(assets: list[dict]) -> None:
 
 def _render_asset_pool() -> None:
     st.subheader("ETF 标的池设置")
-    st.info("标的池数据已迁移到数据库；config.yaml 中的 assets 仅用于初始化兼容。")
+    st.info("标的池数据保存在数据库（etf_universe）；默认标的请见 config/assets.seed.yaml，可通过初始化脚本导入。")
     st.caption(
         "可新增标的或停用已有标的。停用只会使其从新任务、信号和默认选择中隐藏，"
         "不会删除历史行情、回测、交易或持仓记录。"
     )
 
     assets = _ensure_asset_drafts()
+    if not assets:
+        st.warning(EMPTY_UNIVERSE_HINT)
     _render_add_asset_form(assets)
 
     role_options = list(ROLE_LABELS.keys())

@@ -6,6 +6,7 @@ import streamlit as st
 
 from src.config.settings import get_enabled_portfolio_assets, load_settings
 from src.db.connection import db_session, get_connection
+from src.ui.helpers import render_empty_universe_hint
 from src.db.repository import (
     get_account_snapshot,
     get_holding_snapshots,
@@ -28,12 +29,14 @@ def render() -> None:
     st.title("持仓录入")
     st.caption("手动录入现金与 ETF 持仓，保存为当日快照")
 
+    render_empty_universe_hint()
+
     settings = load_settings()
     with get_connection() as conn:
         assets = get_enabled_portfolio_assets(conn)
 
     if not assets:
-        st.warning("没有可录入的 ETF 标的")
+        st.warning("没有可录入的启用 ETF 标的；若标的池为空，请先运行 python scripts/seed_data.py")
         st.stop()
 
     snapshot_date = st.date_input("快照日期", value=date.today()).strftime("%Y-%m-%d")

@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 import pytest
 
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.db.repository import (
     mark_task_done,
@@ -50,7 +51,7 @@ def settings():
 
 
 def _seed_universe(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
 
 
 def _seed_prices(memory_conn, symbol: str, trade_date: str, close: float = 10.0):

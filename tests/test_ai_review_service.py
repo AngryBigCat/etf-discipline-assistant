@@ -8,6 +8,7 @@ import pytest
 from src.ai_review.llm_client import MockLLMClient, get_llm_client
 from src.ai_review.review_service import generate_daily_ai_review, generate_weekly_ai_review
 from src.ai_review.safety import validate_ai_review_output
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.db.repository import (
     get_ai_review_by_daily_date,
@@ -37,7 +38,7 @@ def settings():
 
 
 def _seed(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     save_account_snapshot(
         memory_conn,
         {
@@ -244,7 +245,7 @@ def test_weekly_ai_review_upsert_overwrites(memory_conn, settings):
 
 
 def test_generate_daily_without_report(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     review, saved, message = generate_daily_ai_review(
         memory_conn,
         settings,

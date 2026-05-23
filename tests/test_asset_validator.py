@@ -21,7 +21,7 @@ from src.config.editor import (
     validate_editable_config,
 )
 from src.config.settings import load_settings
-from src.config.sync import sync_assets_from_config
+from src.config.sync import sync_assets_from_seed
 from src.db.repository import list_etf_universe, upsert_etf_universe
 from src.db.schema import init_schema
 
@@ -65,8 +65,9 @@ def sample_config(sample_assets: list[dict]) -> dict:
 @pytest.fixture
 def config_file(tmp_path: Path, sample_config: dict) -> Path:
     path = tmp_path / "config.yaml"
+    config_without_assets = {key: value for key, value in sample_config.items() if key != "assets"}
     with path.open("w", encoding="utf-8") as handle:
-        yaml.dump(sample_config, handle, allow_unicode=True, sort_keys=False)
+        yaml.dump(config_without_assets, handle, allow_unicode=True, sort_keys=False)
     return path
 
 
@@ -171,10 +172,9 @@ def test_validate_editable_config_ignores_assets(sample_config: dict):
     assert not any("标的" in error for error in errors)
 
 
-def test_save_editable_config_does_not_overwrite_assets_in_yaml(config_file: Path, tmp_path: Path, monkeypatch):
+def test_save_editable_config_does_not_write_assets_to_yaml(config_file: Path, tmp_path: Path, monkeypatch):
     monkeypatch.setattr("src.config.editor.get_backup_dir", lambda: tmp_path / "backups")
 
-    original = yaml.safe_load(config_file.read_text(encoding="utf-8"))
     draft = load_editable_config(config_path=config_file)
     draft["portfolio"]["total_plan_amount"] = 120000
 
@@ -182,7 +182,7 @@ def test_save_editable_config_does_not_overwrite_assets_in_yaml(config_file: Pat
 
     saved = yaml.safe_load(config_file.read_text(encoding="utf-8"))
     assert saved["portfolio"]["total_plan_amount"] == 120000
-    assert saved["assets"] == original["assets"]
+    assert "assets" not in saved
 
 
 def test_save_editable_config_does_not_sync_etf_universe(
@@ -211,20 +211,29 @@ def test_api_key_not_in_ai_settings_display(monkeypatch):
     assert "secret-should-not-leak" not in str(display)
 
 
+def test_load_assets_seed_contains_default_symbols():
+    from src.config.assets_seed import load_assets_seed
+
+    assets = load_assets_seed()
+    symbols = {asset["symbol"] for asset in assets}
+    assert "A500" in symbols
+    assert "CASH" in symbols
+
+
 def test_project_config_is_loadable():
     settings = load_settings()
     assert settings.get("portfolio")
     assert validate_editable_config(load_editable_config()) == []
 
 
-def test_sync_assets_from_config_skips_disabled_without_force(memory_conn, sample_config: dict):
+def test_sync_assets_from_seed_skips_disabled_without_force(memory_conn, sample_assets: list[dict]):
     upsert_etf_universe(
         memory_conn,
-        [{**sample_config["assets"][0], "enabled": False, "target_weight": 0.1}],
+        [{**sample_assets[0], "enabled": False, "target_weight": 0.1}],
     )
     memory_conn.commit()
 
-    stats = sync_assets_from_config(memory_conn, sample_config, force=False)
+    stats = sync_assets_from_seed(memory_conn, assets=sample_assets, force=False)
     row = memory_conn.execute("SELECT enabled, target_weight FROM etf_universe WHERE symbol='A500'").fetchone()
     assert stats["skipped"] == 1
     assert row["enabled"] == 0

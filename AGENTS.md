@@ -281,7 +281,7 @@ AI 层不得参与回测决策。
 - 根据新增标的自动生成投资建议或自动交易
 - 日常通过 `config.yaml` 覆盖数据库中用户已停用的标的（除非明确执行 `--force` 同步）
 
-`config.yaml` 中的 `assets` 仅用于初始化兼容（`scripts/sync_assets_from_config.py`），不是日常编辑源。
+`config/assets.seed.yaml` 仅用于初始化兼容（`scripts/sync_assets_from_seed.py`），不是日常编辑源；`config.yaml` 不再包含 `assets`。
 
 ## UI 要求
 

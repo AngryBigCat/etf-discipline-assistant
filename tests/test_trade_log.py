@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 import pytest
 
+from src.config.assets_seed import load_assets_seed
 from src.config.settings import load_settings
 from src.db.repository import (
     get_strategy_signals_by_date,
@@ -41,7 +42,7 @@ def settings():
 
 
 def _seed_signal(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     save_account_snapshot(
         memory_conn,
         {
@@ -143,7 +144,7 @@ def test_create_buy_from_signal(memory_conn, settings):
 
 
 def test_manual_trade_saved_and_queryable(memory_conn, settings):
-    upsert_etf_universe(memory_conn, settings["assets"])
+    upsert_etf_universe(memory_conn, load_assets_seed())
     trade_id = create_manual_trade(
         memory_conn,
         TradeLogInput(
