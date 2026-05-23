@@ -344,6 +344,26 @@ SCHEMA_STATEMENTS: list[str] = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_scheduler_run_log_job_key ON scheduler_run_log(job_key)",
     "CREATE INDEX IF NOT EXISTS idx_scheduler_run_log_started_at ON scheduler_run_log(started_at)",
+    """
+    CREATE TABLE IF NOT EXISTS notification_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        channel TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        level TEXT DEFAULT 'info',
+        title TEXT NOT NULL,
+        body_preview TEXT,
+        recipient_masked TEXT,
+        status TEXT NOT NULL,
+        dedupe_key TEXT,
+        source_type TEXT,
+        source_key TEXT,
+        error_message TEXT,
+        sent_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_notification_log_created_at ON notification_log(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_notification_log_dedupe ON notification_log(dedupe_key, channel)",
 ]
 
 

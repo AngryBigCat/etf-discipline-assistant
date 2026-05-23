@@ -294,6 +294,21 @@ SCHEDULER_JOB_TYPE_LABELS = {
     "weekly_pipeline": "每周流程",
 }
 
+NOTIFICATION_STATUS_LABELS = {
+    "skipped": "已跳过",
+    "success": "成功",
+    "failed": "失败",
+}
+
+NOTIFICATION_EVENT_TYPE_LABELS = {
+    "test_email": "测试邮件",
+    "scheduler_failure": "定时任务失败",
+    "scheduler_success": "定时任务成功",
+    "high_priority_tasks": "高优先级任务",
+    "portfolio_risk": "仓位风险",
+    "daily_pipeline_done": "每日流程完成",
+}
+
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={col: FIELD_LABELS.get(col, col) for col in df.columns})
@@ -410,3 +425,15 @@ def localize_scheduler_job_type(value: object) -> object:
     if value in (None, ""):
         return "—"
     return SCHEDULER_JOB_TYPE_LABELS.get(value, value)
+
+
+def localize_notification_status(value: object) -> object:
+    if value in (None, ""):
+        return "—"
+    return NOTIFICATION_STATUS_LABELS.get(value, value)
+
+
+def localize_notification_event_type(value: object) -> object:
+    if value in (None, ""):
+        return "—"
+    return NOTIFICATION_EVENT_TYPE_LABELS.get(value, value)

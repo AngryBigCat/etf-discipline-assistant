@@ -204,6 +204,15 @@
 - Linux 部署说明见 [`docs/deployment-linux.md`](docs/deployment-linux.md)
 - **定时任务不会自动交易，不会自动修改真实持仓，不会自动审核策略信号；不构成投资建议**
 
+### 阶段 13.1：邮件通知提醒
+
+- 新增 `src/notifications/`，基于 Python 标准库 `smtplib` / `EmailMessage` 发送邮件
+- 邮件配置全部从 `.env` 读取，**不写入** `config/app.yaml` 或数据库
+- 通知日志持久化到 `notification_log`；收件人脱敏保存，不保存 SMTP 密码
+- 集成场景：定时任务失败/成功、高优先级任务、仓位风险、每日流程完成
+- Streamlit「通知中心」页：查看配置状态、发送测试邮件、查看最近 100 条通知日志
+- **邮件只做流程提醒，不构成投资建议，不会自动交易**
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -222,6 +231,7 @@
 - 回测分析
 - 任务中心
 - 定时任务
+- 通知中心
 - 系统设置
 
 ## 运行方式
@@ -301,6 +311,8 @@ python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --c
 - `LLM_API_BASE`
 - `LLM_MODEL`
 - `LLM_TIMEOUT`（默认 60 秒）
+- `EMAIL_ENABLED` / `EMAIL_SMTP_*` / `EMAIL_FROM` / `EMAIL_TO` — 邮件通知（SMTP 密码仅放 `.env`）
+- `NOTIFY_ON_*` — 各类通知开关（定时任务失败、高优先级任务、仓位风险等）
 
 ## 对接 DeepSeek 官方 API 测试
 

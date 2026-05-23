@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
+from src.notifications.service import send_daily_pipeline_notifications
 from src.tasks.generators import _rolling_week
 from src.tasks.service import refresh_tasks_for_date
 from src.utils.date_utils import today_str
@@ -92,7 +93,44 @@ def run_daily_pipeline(
             lambda: _run_refresh_tasks(conn, settings, report_date),
         ),
     ]
-    return _run_pipeline_steps(steps, pipeline_name="每日收盘后流程")
+    result = _run_pipeline_steps(steps, pipeline_name="每日收盘后流程")
+    if not result.success:
+        return result
+
+    try:
+        notification_summaries = send_daily_pipeline_notifications(
+            conn,
+            report_date,
+            result,
+        )
+    except Exception as exc:
+        notification_summaries = [
+            {
+                "notification": "pipeline_notifications",
+                "status": "failed",
+                "message": str(exc),
+                "error": str(exc),
+            }
+        ]
+
+    if notification_summaries:
+        step_results = json.loads(result.detail or "[]")
+        step_results.append(
+            {
+                "step": "pipeline_notifications",
+                "success": all(
+                    item.get("status") != "failed" for item in notification_summaries
+                ),
+                "message": "通知处理完成",
+                "detail": json.dumps(notification_summaries, ensure_ascii=False),
+            }
+        )
+        return WorkflowResult(
+            success=True,
+            message=result.message,
+            detail=_serialize_steps(step_results),
+        )
+    return result
 
 
 def run_weekly_pipeline(

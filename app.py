@@ -25,6 +25,7 @@ page = st.navigation(
         st.Page("pages/backtest.py", title="回测分析"),
         st.Page("pages/tasks.py", title="任务中心"),
         st.Page("pages/scheduler.py", title="定时任务"),
+        st.Page("pages/notifications.py", title="通知中心"),
         st.Page("pages/settings.py", title="系统设置"),
     ]
 )

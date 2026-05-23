@@ -233,6 +233,7 @@ AI 层不得参与回测决策。
 - 标的池同步到 `etf_universe`（`src/config/sync.py`），不得删除历史数据
 - 标的池数据库化：`src/assets/validator.py`、`src/db/repository.py` 增删改查与校验
 - 定时任务：默认任务初始化、pipeline 编排、run log、cron 解析、启用/停用与 skipped 逻辑
+- 邮件通知：配置解析、发送、dedupe、日志持久化；通知失败不影响主流程
 
 ### 工作流层（`src/workflows/`）
 
@@ -265,6 +266,22 @@ AI 层不得参与回测决策。
 - **在 Streamlit 页面主循环或 Streamlit 进程内启动 scheduler**
 
 scheduler 必须独立运行；任务失败不得导致 worker 进程崩溃。
+
+### 通知层（`src/notifications/` / `pages/notifications.py`）
+
+负责：
+
+- 从 `.env` 读取邮件配置并发送流程提醒
+- 记录 `notification_log`（成功 / 失败 / 跳过）
+- 集成定时任务失败/成功、高优先级任务、仓位风险、每日流程完成等事件
+
+不得负责：
+
+- 自动下单或自动修改 `trade_log` / `holding_snapshot` / `account_snapshot`
+- 自动审核策略信号或自动标记任务完成
+- 在日志、页面、数据库中保存 SMTP 密码或 API Key 明文
+- 把通知内容写成买卖指令或收益承诺
+- 因通知失败导致 scheduler / pipeline 主流程失败
 
 ### 配置中心（`src/config/editor.py` / `pages/settings.py`）
 
@@ -334,6 +351,9 @@ scheduler 必须独立运行；任务失败不得导致 worker 进程崩溃。
   - 使用 `localize_scheduler_status` / `localize_scheduler_job_type` 展示状态与类型
   - 页面须明确提示：只执行安全流程，不会自动交易、不会自动修改持仓、不会自动审核信号
   - 「立即执行」必须调用 `run_scheduler_job`，不得绕过 pipeline 直接写业务表
+- 通知中心页面：
+  - 不得展示 SMTP 密码、API Key 明文，仅显示已配置 / 未配置或脱敏收件人
+  - 页面须明确提示：邮件只做提醒，不构成投资建议，不会自动交易
 
 ## 开发流程
 
