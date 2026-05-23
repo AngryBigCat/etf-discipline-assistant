@@ -127,7 +127,6 @@ def _collect_asset_from_expander(asset: dict, symbol: str, role_options: list[st
 
 
 def _render_add_asset_form(assets: list[dict]) -> None:
-    st.markdown("#### 新增标的")
     role_options = list(ROLE_LABELS.keys())
     default_role = "satellite" if "satellite" in role_options else role_options[0]
 
@@ -221,7 +220,10 @@ def _render_asset_pool() -> None:
     assets = _ensure_asset_drafts()
     if not assets:
         st.warning(EMPTY_UNIVERSE_HINT)
-    _render_add_asset_form(assets)
+
+    with st.expander("新增标的", expanded=False):
+        st.caption("仅在需要扩展标的池时使用；日常维护请在下方列表中编辑或停用已有标的。")
+        _render_add_asset_form(assets)
 
     role_options = list(ROLE_LABELS.keys())
     for index, asset in enumerate(assets):
