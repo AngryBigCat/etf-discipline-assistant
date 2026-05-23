@@ -75,6 +75,29 @@ FIELD_LABELS = {
     "status": "状态",
     "provider": "模型来源",
     "model": "模型",
+    "run_name": "回测名称",
+    "strategy_name": "策略名称",
+    "initial_cash": "初始资金",
+    "fixed_amount": "每期金额",
+    "frequency": "定投频率",
+    "final_value": "期末资产",
+    "total_invested": "累计投入",
+    "position_value": "持仓市值",
+    "total_return": "总收益率",
+    "annualized_return": "年化收益率",
+    "max_drawdown": "最大回撤",
+    "trade_count": "交易次数",
+    "final_quantity": "期末数量",
+    "average_cost": "平均成本",
+    "quantity": "买入数量",
+    "price": "成交价格",
+    "amount": "买入金额",
+    "reason": "原因说明",
+    "total_value": "总资产",
+    "drawdown": "回撤",
+    "cash_value": "剩余现金",
+    "start_date": "开始日期",
+    "end_date": "结束日期",
 }
 
 ROLE_LABELS = {
@@ -158,6 +181,21 @@ REVIEW_STATUS_LABELS_AI = {
     "failed": "失败",
 }
 
+BACKTEST_STRATEGY_LABELS = {
+    "baseline_dca": "普通定投",
+    "ma_filter_dca": "均线过滤定投",
+    "drawdown_boost": "回撤加仓定投",
+}
+
+BACKTEST_FREQUENCY_LABELS = {
+    "weekly": "每周",
+    "monthly": "每月",
+}
+
+BACKTEST_ACTION_LABELS = {
+    "buy": "买入",
+}
+
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={col: FIELD_LABELS.get(col, col) for col in df.columns})
@@ -210,3 +248,15 @@ def localize_review_type(value: object) -> object:
 
 def localize_ai_status(value: object) -> object:
     return REVIEW_STATUS_LABELS_AI.get(value, value)
+
+
+def localize_backtest_strategy(value: object) -> object:
+    return BACKTEST_STRATEGY_LABELS.get(value, value)
+
+
+def localize_backtest_frequency(value: object) -> object:
+    return BACKTEST_FREQUENCY_LABELS.get(value, value)
+
+
+def localize_backtest_action(value: object) -> object:
+    return BACKTEST_ACTION_LABELS.get(value, value)

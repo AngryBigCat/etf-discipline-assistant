@@ -106,6 +106,17 @@
 - 输出经 `safety.py` 校验，自动追加「不构成投资建议」，危险词会被屏蔽
 - AI 仅用于纪律解释与行为复盘，**不决定买卖、不修改持仓/信号/交易日志**
 
+### 阶段 9：回测模块
+
+- 基于历史 `daily_price` 模拟不同定投纪律策略的表现（只读行情，不写真实持仓/交易日志）
+- 三种策略：普通定投（`baseline_dca`）、均线过滤定投（`ma_filter_dca`）、回撤加仓定投（`drawdown_boost`）
+- 支持 weekly / monthly 定投频率；成交价=当日 close，不含手续费/滑点
+- 指标：期末资产、累计投入、总收益率、年化收益率、最大回撤、交易次数、平均成本
+- 写入 `backtest_run` / `backtest_result` / `backtest_trade` / `backtest_equity_curve`
+- CLI：`scripts/run_backtest.py`
+- Streamlit「回测分析」页：参数配置、收益摘要、总资产/回撤曲线、模拟交易记录、历史回测
+- **回测仅用于历史规则验证，不代表未来收益，不构成投资建议**
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -121,6 +132,7 @@
 - 交易日志
 - 报告复盘
 - AI复盘
+- 回测分析
 
 ## 运行方式
 
@@ -137,9 +149,16 @@ python scripts/generate_daily_report.py
 python scripts/generate_weekly_report.py
 python scripts/generate_ai_daily_review.py
 python scripts/generate_ai_weekly_review.py
+python scripts/run_backtest.py
 
 pytest
 streamlit run app.py
+```
+
+回测 CLI 示例：
+
+```bash
+python scripts/run_backtest.py --symbol A500 --strategy baseline_dca --start 2021-01-01 --end 2026-05-23 --cash 100000 --amount 3000 --frequency monthly
 ```
 
 ## 配置说明
@@ -190,14 +209,6 @@ LLM_TIMEOUT=60
 - AI 复盘**仅用于纪律总结与行为复盘**，不构成投资建议，**不会自动交易**，也不会修改持仓、信号或交易日志
 
 ## 未来蓝图
-
-### 阶段 9：回测模块
-
-- 回测普通定投
-- 回测跌幅补仓
-- 回测均线过滤
-- 回测组合再平衡
-- 对比最大回撤和收益
 
 ### 阶段 10：提醒系统
 

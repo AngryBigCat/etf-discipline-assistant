@@ -185,9 +185,73 @@ SCHEMA_STATEMENTS: list[str] = [
         UNIQUE(review_type, target_date, week_start, week_end, prompt_version)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS backtest_run (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_name TEXT,
+        symbol TEXT NOT NULL,
+        strategy_name TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        initial_cash REAL NOT NULL,
+        fixed_amount REAL NOT NULL,
+        frequency TEXT NOT NULL,
+        params_json TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS backtest_result (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER NOT NULL,
+        final_value REAL,
+        total_invested REAL,
+        cash_value REAL,
+        position_value REAL,
+        total_return REAL,
+        annualized_return REAL,
+        max_drawdown REAL,
+        trade_count INTEGER,
+        final_quantity REAL,
+        average_cost REAL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(run_id) REFERENCES backtest_run(id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS backtest_trade (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER NOT NULL,
+        trade_date TEXT NOT NULL,
+        symbol TEXT NOT NULL,
+        action TEXT NOT NULL,
+        price REAL NOT NULL,
+        amount REAL NOT NULL,
+        quantity REAL NOT NULL,
+        reason TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(run_id) REFERENCES backtest_run(id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS backtest_equity_curve (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER NOT NULL,
+        trade_date TEXT NOT NULL,
+        cash_value REAL,
+        position_value REAL,
+        total_value REAL,
+        drawdown REAL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(run_id) REFERENCES backtest_run(id)
+    )
+    """,
     "CREATE INDEX IF NOT EXISTS idx_daily_price_symbol_date ON daily_price(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_indicator_daily_symbol_date ON indicator_daily(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_trade_log_trade_date ON trade_log(trade_date)",
+    "CREATE INDEX IF NOT EXISTS idx_backtest_run_created_at ON backtest_run(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_backtest_trade_run_id ON backtest_trade(run_id)",
+    "CREATE INDEX IF NOT EXISTS idx_backtest_equity_run_date ON backtest_equity_curve(run_id, trade_date)",
 ]
 
 

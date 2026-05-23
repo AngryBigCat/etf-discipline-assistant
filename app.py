@@ -22,6 +22,7 @@ page = st.navigation(
         st.Page("pages/trade_log.py", title="交易日志"),
         st.Page("pages/reports.py", title="报告复盘"),
         st.Page("pages/ai_review.py", title="AI复盘"),
+        st.Page("pages/backtest.py", title="回测分析"),
     ]
 )
 page.run()

@@ -783,3 +783,112 @@ def list_ai_reviews(
             (limit,),
         )
     return cur.fetchall()
+
+
+def save_backtest_run(conn: sqlite3.Connection, row: dict[str, Any]) -> int:
+    cur = conn.execute(
+        """
+        INSERT INTO backtest_run (
+            run_name, symbol, strategy_name, start_date, end_date,
+            initial_cash, fixed_amount, frequency, params_json
+        ) VALUES (
+            :run_name, :symbol, :strategy_name, :start_date, :end_date,
+            :initial_cash, :fixed_amount, :frequency, :params_json
+        )
+        """,
+        row,
+    )
+    return int(cur.lastrowid)
+
+
+def save_backtest_result(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    conn.execute(
+        """
+        INSERT INTO backtest_result (
+            run_id, final_value, total_invested, cash_value, position_value,
+            total_return, annualized_return, max_drawdown, trade_count,
+            final_quantity, average_cost
+        ) VALUES (
+            :run_id, :final_value, :total_invested, :cash_value, :position_value,
+            :total_return, :annualized_return, :max_drawdown, :trade_count,
+            :final_quantity, :average_cost
+        )
+        """,
+        row,
+    )
+
+
+def save_backtest_trades(conn: sqlite3.Connection, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        return
+    conn.executemany(
+        """
+        INSERT INTO backtest_trade (
+            run_id, trade_date, symbol, action, price, amount, quantity, reason
+        ) VALUES (
+            :run_id, :trade_date, :symbol, :action, :price, :amount, :quantity, :reason
+        )
+        """,
+        rows,
+    )
+
+
+def save_backtest_equity_curve(conn: sqlite3.Connection, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        return
+    conn.executemany(
+        """
+        INSERT INTO backtest_equity_curve (
+            run_id, trade_date, cash_value, position_value, total_value, drawdown
+        ) VALUES (
+            :run_id, :trade_date, :cash_value, :position_value, :total_value, :drawdown
+        )
+        """,
+        rows,
+    )
+
+
+def get_backtest_run(conn: sqlite3.Connection, run_id: int) -> sqlite3.Row | None:
+    cur = conn.execute("SELECT * FROM backtest_run WHERE id = ?", (run_id,))
+    return cur.fetchone()
+
+
+def get_backtest_result(conn: sqlite3.Connection, run_id: int) -> sqlite3.Row | None:
+    cur = conn.execute("SELECT * FROM backtest_result WHERE run_id = ?", (run_id,))
+    return cur.fetchone()
+
+
+def get_backtest_trades(conn: sqlite3.Connection, run_id: int) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM backtest_trade
+        WHERE run_id = ?
+        ORDER BY trade_date
+        """,
+        (run_id,),
+    )
+    return cur.fetchall()
+
+
+def get_backtest_equity_curve(conn: sqlite3.Connection, run_id: int) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM backtest_equity_curve
+        WHERE run_id = ?
+        ORDER BY trade_date
+        """,
+        (run_id,),
+    )
+    return cur.fetchall()
+
+
+def list_backtest_runs(conn: sqlite3.Connection, limit: int = 20) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT * FROM backtest_run
+        ORDER BY created_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()
