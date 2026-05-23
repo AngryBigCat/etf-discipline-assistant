@@ -9,6 +9,22 @@ from src.db.repository import upsert_ai_review
 from src.db.schema import _table_has_column, apply_schema_migrations
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("策略信号支持买入", "系统信号显示为可关注状态"),
+        ("买入类标的", "可关注类标的"),
+        ("可考虑买入", "系统信号显示可关注，最终需人工确认"),
+        ("可考虑补仓", "可关注仓位偏离情况，等待系统信号并人工确认"),
+        ("进行仓位调整", "检查仓位是否偏离既定规则，最终需人工确认"),
+    ],
+)
+def test_rewrite_conservative_phrases(source, expected):
+    text = rewrite_trading_advice_phrases(f"复盘：{source}。")
+    assert source not in text
+    assert expected in text
+
+
 def test_rewrite_suggest_replenish():
     text = rewrite_trading_advice_phrases("复盘建议：建议补仓。")
     assert "建议补仓" not in text

@@ -133,6 +133,8 @@ def test_generate_daily_ai_review_persists(memory_conn, settings):
     assert stored["discipline_summary"] == review["discipline_summary"]
     assert stored["behavior_findings"]
     assert "不构成投资建议" in stored["output_text"]
+    for phrase in ("建议买入", "建议补仓", "建议减仓", "可考虑买入", "可考虑补仓"):
+        assert phrase not in stored["output_text"]
 
 
 def test_generate_weekly_ai_review_persists(memory_conn, settings):

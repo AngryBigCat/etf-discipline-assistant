@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from src.ai_review.safety import rewrite_trading_advice_phrases
+
 SECTION_ALIASES: dict[str, tuple[str, ...]] = {
     "纪律总结": ("纪律总结",),
     "行为发现": ("行为发现", "行为模式"),
@@ -61,12 +63,18 @@ def _first_non_empty(*values: str | None) -> str:
     return "—"
 
 
+def _sanitize_display_text(value: str) -> str:
+    if not value or value == "—":
+        return value
+    return rewrite_trading_advice_phrases(value)
+
+
 def build_review_display(review: dict[str, Any] | Any, *, weekly: bool = False) -> dict[str, str]:
     row = _normalize_review(review)
     sections = extract_sections(row.get("output_text"))
     behavior_from_db = row.get("behavior_findings")
 
-    return {
+    display = {
         "discipline_summary": _first_non_empty(
             row.get("discipline_summary"),
             sections.get("纪律总结"),
@@ -88,3 +96,6 @@ def build_review_display(review: dict[str, Any] | Any, *, weekly: bool = False) 
         "action_title": "下周纪律建议" if weekly else "下个交易日纪律建议",
         "raw_output": str(row.get("output_text") or "").strip(),
     }
+    for key in ("discipline_summary", "behavior", "risk_summary", "action_suggestion", "final_note", "raw_output"):
+        display[key] = _sanitize_display_text(display[key])
+    return display
