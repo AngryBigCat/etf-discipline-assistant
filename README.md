@@ -43,8 +43,8 @@ streamlit run app.py
 pytest
 ```
 
-Streamlit 侧边栏页面：
-1. **app** — 数据看板（标的、行情、指标）
+Streamlit 侧边栏页面（`streamlit run app.py` 后左侧导航）：
+1. **数据看板** — 标的、行情、指标
 2. **持仓录入** — 录入现金与 ETF 持仓，保存快照
 3. **仓位管理** — 查看账户总览与仓位状态
 
