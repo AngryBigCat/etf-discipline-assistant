@@ -4,18 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from src.config.settings import get_project_root, load_settings
-from src.db.connection import get_connection
-from src.db.repository import get_latest_daily_prices, get_latest_indicators, list_etf_universe
+from src.ui.helpers import load_dashboard_data
 from src.utils.number_utils import format_number, format_pct
-
-
-def load_dashboard_data():
-    with get_connection() as conn:
-        universe = list_etf_universe(conn)
-        prices = get_latest_daily_prices(conn)
-        indicators = get_latest_indicators(conn)
-    universe_df = pd.DataFrame([dict(row) for row in universe]) if universe else pd.DataFrame()
-    return universe_df, prices, indicators
 
 
 def main() -> None:
@@ -24,7 +14,7 @@ def main() -> None:
 
     st.set_page_config(page_title=app_name, layout="wide")
     st.title(app_name)
-    st.caption("阶段 1-3 最简首页：标的列表、最新行情、基础指标")
+    st.caption("数据看板：标的列表、最新行情、基础指标")
 
     try:
         universe_df, prices_df, indicators_df = load_dashboard_data()
@@ -80,7 +70,9 @@ def main() -> None:
         view = indicators_df[existing_ind].copy()
         for col in ["drawdown_used", "volatility_20d", "return_5d", "return_10d", "return_20d"]:
             if col in view.columns:
-                view[col] = view[col].apply(lambda x: format_pct(x) if col != "volatility_20d" else format_number(x, 4))
+                view[col] = view[col].apply(
+                    lambda x: format_pct(x) if col != "volatility_20d" else format_number(x, 4)
+                )
         st.dataframe(view, use_container_width=True, hide_index=True)
 
     st.divider()
