@@ -56,6 +56,10 @@ def load_settings() -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
+def clear_settings_cache() -> None:
+    load_settings.cache_clear()
+
+
 def get_tradeable_assets(settings: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     cfg = settings or load_settings()
     assets: list[dict[str, Any]] = []

@@ -49,7 +49,7 @@ assets:
     index_code: "000300"
     role: "core_reference"
     market: "CN"
-    target_weight: 0.15
+    target_weight: 0.10
     max_weight: 0.25
     single_buy_ratio: 0.03
     risk_level: 3

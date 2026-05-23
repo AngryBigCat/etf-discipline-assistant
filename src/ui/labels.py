@@ -34,6 +34,8 @@ FIELD_LABELS = {
     "weight": "当前仓位",
     "target_weight": "目标仓位",
     "max_weight": "最大仓位",
+    "total_plan_amount": "计划总投入",
+    "default_buy_amount": "默认买入金额",
     "max_allowed_value": "最大允许市值",
     "deviation": "仓位偏离",
     "status": "仓位状态",
