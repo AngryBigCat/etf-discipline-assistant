@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Iterator
 
 from src.config.settings import get_database_path
+from src.db.schema import init_schema
 
 
 def ensure_database_dir(db_path: Path | None = None) -> Path:
@@ -19,6 +20,7 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    init_schema(conn)
     return conn
 
 
