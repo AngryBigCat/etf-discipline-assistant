@@ -955,3 +955,195 @@ def list_backtest_run_summaries(conn: sqlite3.Connection, limit: int = 20) -> li
         (limit,),
     )
     return cur.fetchall()
+
+
+def upsert_task_item(conn: sqlite3.Connection, row: dict[str, Any]) -> int:
+    payload = {
+        "task_date": row["task_date"],
+        "category": row["category"],
+        "task_type": row["task_type"],
+        "title": row["title"],
+        "description": row.get("description"),
+        "priority": row.get("priority") or "normal",
+        "status": row.get("status") or "pending",
+        "source_type": row.get("source_type"),
+        "source_key": row.get("source_key") or "",
+        "due_date": row.get("due_date"),
+        "note": row.get("note"),
+    }
+    existing = conn.execute(
+        """
+        SELECT id, status
+        FROM task_item
+        WHERE task_date = ? AND task_type = ? AND source_type = ? AND source_key = ?
+        """,
+        (
+            payload["task_date"],
+            payload["task_type"],
+            payload["source_type"],
+            payload["source_key"],
+        ),
+    ).fetchone()
+    if existing is None:
+        cur = conn.execute(
+            """
+            INSERT INTO task_item (
+                task_date, category, task_type, title, description, priority, status,
+                source_type, source_key, due_date, note
+            ) VALUES (
+                :task_date, :category, :task_type, :title, :description, :priority, :status,
+                :source_type, :source_key, :due_date, :note
+            )
+            """,
+            payload,
+        )
+        return int(cur.lastrowid)
+
+    if existing["status"] in {"done", "skipped"}:
+        conn.execute(
+            """
+            UPDATE task_item
+            SET category = :category,
+                title = :title,
+                description = :description,
+                priority = :priority,
+                due_date = :due_date,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :task_id
+            """,
+            {**payload, "task_id": existing["id"]},
+        )
+    else:
+        conn.execute(
+            """
+            UPDATE task_item
+            SET category = :category,
+                title = :title,
+                description = :description,
+                priority = :priority,
+                status = :status,
+                due_date = :due_date,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :task_id
+            """,
+            {**payload, "task_id": existing["id"]},
+        )
+    return int(existing["id"])
+
+
+def list_tasks_by_date(
+    conn: sqlite3.Connection,
+    task_date: str,
+    status: str | None = None,
+) -> list[sqlite3.Row]:
+    if status:
+        cur = conn.execute(
+            """
+            SELECT *
+            FROM task_item
+            WHERE task_date = ? AND status = ?
+            ORDER BY
+                CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,
+                category,
+                id
+            """,
+            (task_date, status),
+        )
+    else:
+        cur = conn.execute(
+            """
+            SELECT *
+            FROM task_item
+            WHERE task_date = ?
+            ORDER BY
+                CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,
+                category,
+                id
+            """,
+            (task_date,),
+        )
+    return cur.fetchall()
+
+
+def list_pending_tasks(conn: sqlite3.Connection, limit: int = 50) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT *
+        FROM task_item
+        WHERE status = 'pending'
+        ORDER BY
+            task_date DESC,
+            CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,
+            id
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()
+
+
+def list_recent_tasks(conn: sqlite3.Connection, limit: int = 100) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT *
+        FROM task_item
+        ORDER BY task_date DESC, updated_at DESC, id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()
+
+
+def update_task_status(
+    conn: sqlite3.Connection,
+    task_id: int,
+    status: str,
+    note: str | None = None,
+) -> None:
+    if status == "done":
+        mark_task_done(conn, task_id, note=note)
+        return
+    if status == "skipped":
+        mark_task_skipped(conn, task_id, note=note)
+        return
+    conn.execute(
+        """
+        UPDATE task_item
+        SET status = ?, note = COALESCE(?, note), updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (status, note, task_id),
+    )
+
+
+def mark_task_done(conn: sqlite3.Connection, task_id: int, note: str | None = None) -> None:
+    conn.execute(
+        """
+        UPDATE task_item
+        SET status = 'done',
+            completed_at = CURRENT_TIMESTAMP,
+            note = COALESCE(?, note),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (note, task_id),
+    )
+
+
+def mark_task_skipped(conn: sqlite3.Connection, task_id: int, note: str | None = None) -> None:
+    conn.execute(
+        """
+        UPDATE task_item
+        SET status = 'skipped',
+            skipped_at = CURRENT_TIMESTAMP,
+            note = COALESCE(?, note),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (note, task_id),
+    )
+
+
+def delete_tasks_by_date(conn: sqlite3.Connection, task_date: str) -> None:
+    conn.execute("DELETE FROM task_item WHERE task_date = ?", (task_date,))

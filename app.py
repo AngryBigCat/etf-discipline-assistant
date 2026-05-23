@@ -23,6 +23,7 @@ page = st.navigation(
         st.Page("pages/reports.py", title="报告复盘"),
         st.Page("pages/ai_review.py", title="AI复盘"),
         st.Page("pages/backtest.py", title="回测分析"),
+        st.Page("pages/tasks.py", title="任务中心"),
     ]
 )
 page.run()

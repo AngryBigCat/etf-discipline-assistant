@@ -142,6 +142,14 @@
 - Streamlit「回测分析」页新增「组合回测」模式：多标的权重配置、组合收益指标、持仓明细、模拟交易记录
 - **组合回测只用于历史规则验证，不代表未来收益，不构成投资建议；不得根据回测结果自动调整真实配置或自动交易**
 
+### 阶段 10：任务中心
+
+- 根据系统当前状态自动生成每日 / 每周 / 风险类流程任务（行情、持仓、信号、报告、AI 复盘、仓位风险等）
+- 写入 `task_item` 表；支持标记完成 / 跳过，已完成任务刷新后不会被重置
+- CLI：`scripts/generate_tasks.py`
+- Streamlit「任务中心」页：任务概览、今日任务、风险任务、历史任务筛选
+- **任务中心只做流程提醒，不构成投资建议，不会自动交易，不做外部推送**
+
 ### enabled 语义
 
 - `enabled=false`：隐藏，不采集，不展示
@@ -158,6 +166,7 @@
 - 报告复盘
 - AI复盘
 - 回测分析
+- 任务中心
 
 ## 运行方式
 
@@ -174,6 +183,7 @@ python scripts/generate_daily_report.py
 python scripts/generate_weekly_report.py
 python scripts/generate_ai_daily_review.py
 python scripts/generate_ai_weekly_review.py
+python scripts/generate_tasks.py
 python scripts/backfill_prices.py --symbol A500 --start 2021-01-01 --end 2026-05-23
 python scripts/run_backtest.py
 python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --cash 100000 --amount 3000 --frequency monthly

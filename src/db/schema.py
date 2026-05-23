@@ -273,6 +273,28 @@ SCHEMA_STATEMENTS: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_backtest_trade_run_id ON backtest_trade(run_id)",
     "CREATE INDEX IF NOT EXISTS idx_backtest_equity_run_date ON backtest_equity_curve(run_id, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_backtest_position_run_id ON backtest_position(run_id)",
+    """
+    CREATE TABLE IF NOT EXISTS task_item (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_date TEXT NOT NULL,
+        category TEXT NOT NULL,
+        task_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        priority TEXT DEFAULT 'normal',
+        status TEXT DEFAULT 'pending',
+        source_type TEXT,
+        source_key TEXT,
+        due_date TEXT,
+        completed_at TEXT,
+        skipped_at TEXT,
+        note TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(task_date, task_type, source_type, source_key)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_task_item_date_status ON task_item(task_date, status)",
 ]
 
 

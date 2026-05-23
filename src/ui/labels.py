@@ -211,6 +211,62 @@ BACKTEST_SYMBOL_LABELS = {
     "PORTFOLIO": "组合",
 }
 
+TASK_CATEGORY_LABELS = {
+    "daily": "每日流程",
+    "weekly": "每周复盘",
+    "risk": "风险提醒",
+    "review": "审核事项",
+    "data": "数据维护",
+}
+
+TASK_PRIORITY_LABELS = {
+    "high": "高",
+    "normal": "中",
+    "low": "低",
+}
+
+TASK_STATUS_LABELS = {
+    "pending": "待处理",
+    "done": "已完成",
+    "skipped": "已跳过",
+}
+
+TASK_TYPE_LABELS = {
+    "update_market_data": "更新行情数据",
+    "check_indicators": "计算技术指标",
+    "input_holding_snapshot": "录入持仓快照",
+    "check_portfolio_risk": "检查仓位风险",
+    "generate_strategy_signal": "生成策略信号",
+    "review_strategy_signal": "审核策略信号",
+    "record_trade_log": "记录交易日志",
+    "generate_daily_report": "生成今日日报",
+    "generate_ai_daily_review": "生成 AI 日复盘",
+    "generate_weekly_report": "生成本周周报",
+    "generate_ai_weekly_review": "生成 AI 周复盘",
+    "review_weekly_discipline": "复盘本周交易纪律",
+    "check_portfolio_deviation": "检查组合权重偏离",
+    "stale_market_data": "行情数据过期",
+    "missing_holding_snapshot": "持仓快照缺失",
+    "overweight_position": "仓位偏高",
+    "exceed_max_position": "仓位超过上限",
+    "watch_only_overweight": "只观察标的超仓",
+    "unreviewed_signal": "待审核信号",
+    "non_rule_based_trade": "不符合规则交易",
+}
+
+TASK_SOURCE_TYPE_LABELS = {
+    "daily_price": "行情数据",
+    "account_snapshot": "账户快照",
+    "holding_snapshot": "持仓快照",
+    "portfolio": "仓位管理",
+    "strategy_signal": "策略信号",
+    "trade_log": "交易日志",
+    "daily_report": "日报",
+    "weekly_report": "周报",
+    "ai_review": "AI 复盘",
+    "backtest": "回测",
+}
+
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={col: FIELD_LABELS.get(col, col) for col in df.columns})
@@ -281,3 +337,25 @@ def localize_backtest_symbol(value: object) -> object:
     if isinstance(value, str):
         return BACKTEST_SYMBOL_LABELS.get(value, value)
     return value
+
+
+def localize_task_category(value: object) -> object:
+    return TASK_CATEGORY_LABELS.get(value, value)
+
+
+def localize_task_priority(value: object) -> object:
+    return TASK_PRIORITY_LABELS.get(value, value)
+
+
+def localize_task_status(value: object) -> object:
+    return TASK_STATUS_LABELS.get(value, value)
+
+
+def localize_task_type(value: object) -> object:
+    return TASK_TYPE_LABELS.get(value, value)
+
+
+def localize_task_source_type(value: object) -> object:
+    if value in (None, ""):
+        return "—"
+    return TASK_SOURCE_TYPE_LABELS.get(value, value)
