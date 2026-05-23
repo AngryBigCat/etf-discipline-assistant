@@ -476,7 +476,7 @@ def update_strategy_signal_review_status(
     signal_id: int,
     review_status: str,
 ) -> None:
-    if review_status == "reviewed":
+    if review_status in {"reviewed", "executed"}:
         conn.execute(
             """
             UPDATE strategy_signal
@@ -494,3 +494,87 @@ def update_strategy_signal_review_status(
         """,
         (review_status, signal_id),
     )
+
+
+def save_trade_log(conn: sqlite3.Connection, row: dict[str, Any]) -> int:
+    sql = """
+    INSERT INTO trade_log (
+        trade_date, symbol, signal_id, action, amount, price, quantity,
+        reason, emotion, is_rule_based, suggested_amount, deviation_amount,
+        execution_status, note
+    ) VALUES (
+        :trade_date, :symbol, :signal_id, :action, :amount, :price, :quantity,
+        :reason, :emotion, :is_rule_based, :suggested_amount, :deviation_amount,
+        :execution_status, :note
+    )
+    """
+    cur = conn.execute(sql, row)
+    return int(cur.lastrowid)
+
+
+def get_trade_logs(
+    conn: sqlite3.Connection,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    symbol: str | None = None,
+) -> list[sqlite3.Row]:
+    sql = """
+    SELECT tl.*, eu.name
+    FROM trade_log tl
+    LEFT JOIN etf_universe eu ON tl.symbol = eu.symbol
+    WHERE 1=1
+    """
+    params: list[Any] = []
+    if start_date:
+        sql += " AND tl.trade_date >= ?"
+        params.append(start_date)
+    if end_date:
+        sql += " AND tl.trade_date <= ?"
+        params.append(end_date)
+    if symbol:
+        sql += " AND tl.symbol = ?"
+        params.append(symbol)
+    sql += " ORDER BY tl.trade_date DESC, tl.id DESC"
+    cur = conn.execute(sql, params)
+    return cur.fetchall()
+
+
+def get_trade_log_by_id(conn: sqlite3.Connection, trade_id: int) -> sqlite3.Row | None:
+    cur = conn.execute(
+        """
+        SELECT tl.*, eu.name
+        FROM trade_log tl
+        LEFT JOIN etf_universe eu ON tl.symbol = eu.symbol
+        WHERE tl.id = ?
+        """,
+        (trade_id,),
+    )
+    return cur.fetchone()
+
+
+def get_trade_logs_by_signal_id(conn: sqlite3.Connection, signal_id: int) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT tl.*, eu.name
+        FROM trade_log tl
+        LEFT JOIN etf_universe eu ON tl.symbol = eu.symbol
+        WHERE tl.signal_id = ?
+        ORDER BY tl.trade_date DESC, tl.id DESC
+        """,
+        (signal_id,),
+    )
+    return cur.fetchall()
+
+
+def get_recent_trade_logs(conn: sqlite3.Connection, limit: int = 50) -> list[sqlite3.Row]:
+    cur = conn.execute(
+        """
+        SELECT tl.*, eu.name
+        FROM trade_log tl
+        LEFT JOIN etf_universe eu ON tl.symbol = eu.symbol
+        ORDER BY tl.trade_date DESC, tl.id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return cur.fetchall()

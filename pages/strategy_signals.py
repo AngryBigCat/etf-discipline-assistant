@@ -1,18 +1,18 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pandas as pd
 import streamlit as st
 
 from src.config.settings import get_watch_only_assets, load_settings
 from src.db.connection import db_session, get_connection
-from src.db.repository import (
-    get_latest_strategy_signals,
-    get_portfolio_overview,
-    update_strategy_signal_review_status,
-)
+from src.db.repository import get_latest_price_map, get_latest_strategy_signals, get_portfolio_overview
 from src.strategy.rule_engine import calc_available_cash
 from src.strategy.signal_generator import SnapshotRequiredError, generate_and_save_signals
+from src.trading.trade_log import create_buy_from_signal, create_ignore_from_signal, mark_signal_reviewed
 from src.ui.labels import (
+    EMOTION_LABELS,
     localize_action,
     localize_confidence,
     localize_review_status,
@@ -21,7 +21,6 @@ from src.ui.labels import (
 from src.utils.date_utils import today_str
 from src.utils.number_utils import format_number, format_pct
 
-REVIEW_OPTIONS = ["generated", "reviewed", "ignored"]
 BUY_ACTIONS = {"strong_buy", "small_buy"}
 OBSERVE_ACTIONS = {"hold", "fixed_invest"}
 
@@ -39,18 +38,102 @@ def _render_summary(signals: list[dict], watch_only_assets: list[dict]) -> None:
     observe_symbols = [row["symbol"] for row in signals if row.get("action") in OBSERVE_ACTIONS]
     watch_symbols = [asset["symbol"] for asset in watch_only_assets]
 
-    st.markdown(
-        f"- **可考虑买入**：{('、'.join(buy_symbols) if buy_symbols else '无')}"
-    )
-    st.markdown(
-        f"- **暂停买入**：{('、'.join(stop_symbols) if stop_symbols else '无')}"
-    )
-    st.markdown(
-        f"- **观察标的**：{('、'.join(observe_symbols) if observe_symbols else '无')}"
-    )
-    st.markdown(
-        f"- **只观察标的**：{('、'.join(watch_symbols) if watch_symbols else '无')}"
-    )
+    st.markdown(f"- **可考虑买入**：{('、'.join(buy_symbols) if buy_symbols else '无')}")
+    st.markdown(f"- **暂停买入**：{('、'.join(stop_symbols) if stop_symbols else '无')}")
+    st.markdown(f"- **观察标的**：{('、'.join(observe_symbols) if observe_symbols else '无')}")
+    st.markdown(f"- **只观察标的**：{('、'.join(watch_symbols) if watch_symbols else '无')}")
+
+
+def _render_signal_actions(signal: dict, price_map: dict[str, float]) -> None:
+    signal_id = signal.get("id")
+    if signal_id is None:
+        return
+
+    symbol = signal["symbol"]
+    name = signal.get("name") or symbol
+    suggested = float(signal.get("suggested_amount") or 0)
+    latest_price = price_map.get(symbol)
+    default_price = float(latest_price) if latest_price else 0.0
+    default_quantity = suggested / default_price if default_price > 0 else 0.0
+
+    with st.expander(f"{symbol} · {name} · {localize_review_status(signal.get('review_status'))}"):
+        btn1, btn2 = st.columns(2)
+        with btn1:
+            if st.button("标记已查看", key=f"reviewed_{signal_id}"):
+                with db_session() as conn:
+                    mark_signal_reviewed(conn, int(signal_id))
+                st.success("已标记为已查看")
+                st.rerun()
+        with btn2:
+            if st.button("标记忽略", key=f"ignore_{signal_id}"):
+                with db_session() as conn:
+                    create_ignore_from_signal(conn, signal)
+                st.success("已标记为忽略，并写入交易日志")
+                st.rerun()
+
+        with st.form(f"buy_form_{signal_id}"):
+            st.markdown("**记录买入**")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                trade_date = st.date_input(
+                    "交易日期",
+                    value=date.today(),
+                    key=f"trade_date_{signal_id}",
+                )
+                amount = st.number_input(
+                    "交易金额",
+                    min_value=0.0,
+                    value=suggested,
+                    step=100.0,
+                    format="%.2f",
+                    key=f"amount_{signal_id}",
+                )
+            with c2:
+                price = st.number_input(
+                    "交易价格",
+                    min_value=0.0,
+                    value=default_price,
+                    step=0.0001,
+                    format="%.4f",
+                    key=f"price_{signal_id}",
+                )
+                quantity = st.number_input(
+                    "交易数量",
+                    min_value=0.0,
+                    value=default_quantity,
+                    step=100.0,
+                    format="%.4f",
+                    key=f"quantity_{signal_id}",
+                )
+            with c3:
+                emotion = st.selectbox(
+                    "情绪状态",
+                    options=list(EMOTION_LABELS.keys()),
+                    index=list(EMOTION_LABELS.keys()).index("planned"),
+                    format_func=lambda v: EMOTION_LABELS[v],
+                    key=f"emotion_{signal_id}",
+                )
+                note = st.text_input("备注", key=f"note_{signal_id}")
+            reason = st.text_area("交易理由", key=f"reason_{signal_id}")
+
+            if st.form_submit_button("保存买入记录", type="primary"):
+                try:
+                    with db_session() as conn:
+                        create_buy_from_signal(
+                            conn,
+                            signal,
+                            trade_date=trade_date.strftime("%Y-%m-%d"),
+                            amount=amount,
+                            price=price if price > 0 else None,
+                            quantity=quantity if quantity > 0 else None,
+                            reason=reason,
+                            emotion=emotion,
+                            note=note,
+                        )
+                    st.success("买入记录已保存，信号状态已更新为已执行")
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"保存失败：{exc}")
 
 
 def render() -> None:
@@ -62,6 +145,7 @@ def render() -> None:
 
     with get_connection() as conn:
         overview = get_portfolio_overview(conn, settings)
+        price_map = get_latest_price_map(conn)
 
     account = overview["account"]
     total_plan_amount = overview["total_plan_amount"]
@@ -149,30 +233,9 @@ def render() -> None:
 
     _render_summary(signals, watch_only_assets)
 
-    st.subheader("审核状态")
+    st.subheader("信号操作")
     for signal in signals:
-        signal_id = signal.get("id")
-        if signal_id is None:
-            continue
-        current_status = signal.get("review_status") or "generated"
-        cols = st.columns([2, 3])
-        with cols[0]:
-            st.write(f"{signal['symbol']} · {signal.get('name') or signal['symbol']}")
-        with cols[1]:
-            selected = st.selectbox(
-                "审核状态",
-                options=REVIEW_OPTIONS,
-                index=REVIEW_OPTIONS.index(current_status)
-                if current_status in REVIEW_OPTIONS
-                else 0,
-                format_func=localize_review_status,
-                key=f"review_{signal_id}",
-                label_visibility="collapsed",
-            )
-            if selected != current_status:
-                with db_session() as conn:
-                    update_strategy_signal_review_status(conn, int(signal_id), selected)
-                st.rerun()
+        _render_signal_actions(signal, price_map)
 
 
 render()

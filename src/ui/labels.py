@@ -50,6 +50,13 @@ FIELD_LABELS = {
     "suggested_amount": "建议金额",
     "review_status": "审核状态",
     "reason": "原因说明",
+    "signal_id": "关联信号",
+    "deviation_amount": "偏离金额",
+    "execution_status": "执行状态",
+    "emotion": "情绪状态",
+    "price": "交易价格",
+    "note": "备注",
+    "is_rule_based": "是否符合规则",
 }
 
 ROLE_LABELS = {
@@ -93,6 +100,33 @@ REVIEW_STATUS_LABELS = {
     "generated": "系统生成",
     "reviewed": "已查看",
     "ignored": "已忽略",
+    "executed": "已执行",
+}
+
+TRADE_ACTION_LABELS = {
+    "buy": "买入",
+    "sell": "卖出",
+    "hold": "观察",
+    "ignore": "忽略",
+    "adjust": "调整",
+}
+
+EMOTION_LABELS = {
+    "calm": "冷静",
+    "planned": "计划内",
+    "chasing": "追涨",
+    "panic": "恐慌",
+    "dip_buying": "补跌",
+    "temporary": "临时决策",
+    "other": "其他",
+}
+
+EXECUTION_STATUS_LABELS = {
+    "recorded": "已记录",
+    "matched_signal": "按信号执行",
+    "deviated": "偏离信号",
+    "manual": "手动记录",
+    "ignored": "忽略信号",
 }
 
 
@@ -127,3 +161,15 @@ def localize_action(value: object, settings: dict | None = None) -> object:
 
 def localize_review_status(value: object) -> object:
     return REVIEW_STATUS_LABELS.get(value, value)
+
+
+def localize_trade_action(value: object) -> object:
+    return TRADE_ACTION_LABELS.get(value, value)
+
+
+def localize_emotion(value: object) -> object:
+    return EMOTION_LABELS.get(value, value)
+
+
+def localize_execution_status(value: object) -> object:
+    return EXECUTION_STATUS_LABELS.get(value, value)

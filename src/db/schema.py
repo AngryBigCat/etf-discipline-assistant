@@ -83,6 +83,9 @@ SCHEMA_STATEMENTS: list[str] = [
         reason TEXT,
         emotion TEXT,
         is_rule_based INTEGER DEFAULT 1,
+        suggested_amount REAL DEFAULT 0,
+        deviation_amount REAL DEFAULT 0,
+        execution_status TEXT DEFAULT 'recorded',
         note TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (signal_id) REFERENCES strategy_signal(id)
@@ -147,6 +150,7 @@ SCHEMA_STATEMENTS: list[str] = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_daily_price_symbol_date ON daily_price(symbol, trade_date)",
     "CREATE INDEX IF NOT EXISTS idx_indicator_daily_symbol_date ON indicator_daily(symbol, trade_date)",
+    "CREATE INDEX IF NOT EXISTS idx_trade_log_trade_date ON trade_log(trade_date)",
 ]
 
 
@@ -164,12 +168,25 @@ def _table_has_column(conn: sqlite3.Connection, table_name: str, column_name: st
 
 
 def apply_schema_migrations(conn: sqlite3.Connection) -> None:
-    if not _table_exists(conn, "strategy_signal"):
+    if _table_exists(conn, "strategy_signal"):
+        if not _table_has_column(conn, "strategy_signal", "special_score"):
+            conn.execute(
+                "ALTER TABLE strategy_signal ADD COLUMN special_score REAL DEFAULT 0"
+            )
+
+    if not _table_exists(conn, "trade_log"):
         return
-    if not _table_has_column(conn, "strategy_signal", "special_score"):
-        conn.execute(
-            "ALTER TABLE strategy_signal ADD COLUMN special_score REAL DEFAULT 0"
-        )
+
+    trade_log_columns = {
+        "suggested_amount": "REAL DEFAULT 0",
+        "deviation_amount": "REAL DEFAULT 0",
+        "execution_status": "TEXT DEFAULT 'recorded'",
+    }
+    for column_name, column_def in trade_log_columns.items():
+        if not _table_has_column(conn, "trade_log", column_name):
+            conn.execute(
+                f"ALTER TABLE trade_log ADD COLUMN {column_name} {column_def}"
+            )
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
