@@ -43,14 +43,17 @@ def test_config_path_resolves_absolute_env_path(tmp_path, monkeypatch):
     assert get_config_path() == config_path
 
 
-def test_legacy_root_config_yaml_is_used_when_app_yaml_missing(tmp_path, monkeypatch):
-    monkeypatch.delenv("CONFIG_PATH", raising=False)
-    legacy_path = tmp_path / "config.yaml"
-    legacy_path.write_text("portfolio:\n  total_plan_amount: 1\n", encoding="utf-8")
-
+def test_config_path_prefers_project_env_over_stale_process_env(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("CONFIG_PATH=config/app.yaml\n", encoding="utf-8")
+    monkeypatch.setenv("CONFIG_PATH", "config.yaml")
     monkeypatch.setattr("src.config.settings.get_project_root", lambda: tmp_path)
 
-    assert get_config_path() == legacy_path
+    from src.config.settings import _load_project_env, get_config_path
+
+    _load_project_env()
+
+    assert get_config_path() == tmp_path / "config" / "app.yaml"
 
 
 def test_load_settings_reads_config_app_yaml(monkeypatch):

@@ -274,7 +274,7 @@ python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --c
 - **`etf_universe` 是标的池主数据源**；默认标的见 `config/assets.seed.yaml`，通过 `scripts/sync_assets_from_seed.py` 导入
 - 系统设置页的标的池增删改直接写入数据库，**不会写回** `config/assets.seed.yaml` 或 `config/app.yaml`
 - API Key 仅通过 `.env` 配置；系统设置页只显示「已配置 / 未配置」，**不会展示 API Key 明文**
-- 可通过 `CONFIG_PATH` 环境变量覆盖主配置文件路径（相对路径基于项目根目录解析）；若 `config/app.yaml` 不存在但根目录仍有旧版 `config.yaml`，系统会临时回退并提示迁移
+- 可通过 `CONFIG_PATH` 环境变量覆盖主配置文件路径（相对路径基于项目根目录解析）
 
 可选环境变量在 `.env`（可复制 `.env.example` 后修改，**不要提交 `.env` 到 Git**）：
 
