@@ -417,12 +417,12 @@ def upsert_strategy_signals(conn: sqlite3.Connection, rows: list[dict[str, Any]]
     sql = """
     INSERT INTO strategy_signal (
         signal_date, symbol, trend_score, drawdown_score, volatility_score,
-        position_score, anti_chase_score, final_score, action, suggested_amount,
-        reason, confidence_level, review_status
+        position_score, anti_chase_score, special_score, final_score, action,
+        suggested_amount, reason, confidence_level, review_status
     ) VALUES (
         :signal_date, :symbol, :trend_score, :drawdown_score, :volatility_score,
-        :position_score, :anti_chase_score, :final_score, :action, :suggested_amount,
-        :reason, :confidence_level, :review_status
+        :position_score, :anti_chase_score, :special_score, :final_score, :action,
+        :suggested_amount, :reason, :confidence_level, :review_status
     )
     ON CONFLICT(signal_date, symbol) DO UPDATE SET
         trend_score = excluded.trend_score,
@@ -430,6 +430,7 @@ def upsert_strategy_signals(conn: sqlite3.Connection, rows: list[dict[str, Any]]
         volatility_score = excluded.volatility_score,
         position_score = excluded.position_score,
         anti_chase_score = excluded.anti_chase_score,
+        special_score = excluded.special_score,
         final_score = excluded.final_score,
         action = excluded.action,
         suggested_amount = excluded.suggested_amount,

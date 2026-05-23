@@ -26,32 +26,10 @@ BUY_ACTIONS = {"strong_buy", "small_buy"}
 OBSERVE_ACTIONS = {"hold", "fixed_invest"}
 
 
-def _derive_special_score(row: dict) -> float | None:
-    if row.get("special_score") is not None:
-        return float(row["special_score"])
-    if row.get("final_score") is None:
-        return None
-    return (
-        float(row["final_score"])
-        - 50.0
-        - float(row.get("trend_score") or 0)
-        - float(row.get("drawdown_score") or 0)
-        - float(row.get("anti_chase_score") or 0)
-        - float(row.get("position_score") or 0)
-        - float(row.get("volatility_score") or 0)
-    )
-
-
-def _load_signal_rows(settings: dict) -> list[dict]:
+def _load_signal_rows() -> list[dict]:
     with get_connection() as conn:
         rows = get_latest_strategy_signals(conn)
-    result = []
-    for row in rows:
-        item = dict(row)
-        special_score = _derive_special_score(item)
-        item["special_score"] = special_score if special_score is not None else "—"
-        result.append(item)
-    return result
+    return [dict(row) for row in rows]
 
 
 def _render_summary(signals: list[dict], watch_only_assets: list[dict]) -> None:
@@ -118,7 +96,7 @@ def render() -> None:
         except Exception as exc:
             st.error(f"生成失败：{exc}")
 
-    signals = _load_signal_rows(settings)
+    signals = _load_signal_rows()
     if not signals:
         st.info("暂无策略信号，请先点击「生成今日纪律信号」。")
         if watch_only_assets:
@@ -151,9 +129,9 @@ def render() -> None:
                 "drawdown_score": format_number(signal.get("drawdown_score"), 1),
                 "anti_chase_score": format_number(signal.get("anti_chase_score"), 1),
                 "position_score": format_number(signal.get("position_score"), 1),
-                "special_score": signal.get("special_score")
-                if signal.get("special_score") == "—"
-                else format_number(signal.get("special_score"), 1),
+                "special_score": format_number(signal.get("special_score"), 1)
+                if signal.get("special_score") is not None
+                else "—",
                 "action": localize_action(signal.get("action"), settings),
                 "suggested_amount": format_number(signal.get("suggested_amount"), 0),
                 "confidence_level": localize_confidence(signal.get("confidence_level")),

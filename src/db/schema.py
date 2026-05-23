@@ -121,6 +121,7 @@ SCHEMA_STATEMENTS: list[str] = [
         volatility_score REAL DEFAULT 0,
         position_score REAL DEFAULT 0,
         anti_chase_score REAL DEFAULT 0,
+        special_score REAL DEFAULT 0,
         final_score REAL DEFAULT 0,
         action TEXT,
         suggested_amount REAL DEFAULT 0,
@@ -149,6 +150,29 @@ SCHEMA_STATEMENTS: list[str] = [
 ]
 
 
+def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
+    cur = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (table_name,),
+    )
+    return cur.fetchone() is not None
+
+
+def _table_has_column(conn: sqlite3.Connection, table_name: str, column_name: str) -> bool:
+    rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return any(row[1] == column_name for row in rows)
+
+
+def apply_schema_migrations(conn: sqlite3.Connection) -> None:
+    if not _table_exists(conn, "strategy_signal"):
+        return
+    if not _table_has_column(conn, "strategy_signal", "special_score"):
+        conn.execute(
+            "ALTER TABLE strategy_signal ADD COLUMN special_score REAL DEFAULT 0"
+        )
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
     for statement in SCHEMA_STATEMENTS:
         conn.execute(statement)
+    apply_schema_migrations(conn)

@@ -50,6 +50,7 @@ class StrategySignal:
             "volatility_score": self.volatility_score,
             "position_score": self.position_score,
             "anti_chase_score": self.anti_chase_score,
+            "special_score": self.special_score,
             "final_score": self.final_score,
             "action": self.action,
             "suggested_amount": self.suggested_amount,
