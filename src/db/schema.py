@@ -363,6 +363,16 @@ def apply_schema_migrations(conn: sqlite3.Connection) -> None:
                     f"ALTER TABLE backtest_result ADD COLUMN {column_name} {column_def}"
                 )
 
+    if _table_exists(conn, "etf_universe"):
+        if not _table_has_column(conn, "etf_universe", "enabled"):
+            conn.execute(
+                "ALTER TABLE etf_universe ADD COLUMN enabled INTEGER DEFAULT 1"
+            )
+        if not _table_has_column(conn, "etf_universe", "enabled_for_signal"):
+            conn.execute(
+                "ALTER TABLE etf_universe ADD COLUMN enabled_for_signal INTEGER DEFAULT 1"
+            )
+
 
 def init_schema(conn: sqlite3.Connection) -> None:
     for statement in SCHEMA_STATEMENTS:
