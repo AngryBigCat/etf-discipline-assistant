@@ -18,6 +18,7 @@ from src.db.repository import (
     get_weekly_report,
 )
 from src.portfolio.rebalance import RISK_STATUS_EXCEED_MAX, RISK_STATUS_OVERWEIGHT, SIGNAL_STATUS_WATCH_ONLY
+from src.strategy.rule_engine import ACTION_FIXED_INVEST, ACTION_SMALL_BUY, ACTION_STRONG_BUY
 from src.tasks.models import TaskItem
 from src.tasks.rules import (
     TASK_CATEGORY_DAILY,
@@ -45,10 +46,15 @@ from src.tasks.rules import (
     TASK_REVIEW_STRATEGY_SIGNAL,
     TASK_REVIEW_WEEKLY_DISCIPLINE,
     TASK_STALE_MARKET_DATA,
-    TASK_UNREVIEWED_SIGNAL,
     TASK_UPDATE_MARKET_DATA,
     TASK_WATCH_ONLY_OVERWEIGHT,
 )
+
+ACTIONABLE_SIGNAL_ACTIONS = {
+    ACTION_STRONG_BUY,
+    ACTION_SMALL_BUY,
+    ACTION_FIXED_INVEST,
+}
 
 
 def _rolling_week(task_date: str) -> tuple[str, str]:
@@ -81,6 +87,14 @@ def _has_snapshot_for_date(conn, task_date: str) -> bool:
         return False
     holdings = get_holding_snapshots(conn, task_date)
     return len(holdings) > 0
+
+
+def _format_unreviewed_signal_description(unreviewed_signals: list[dict]) -> str:
+    symbols = "、".join(signal["symbol"] for signal in unreviewed_signals)
+    return (
+        f"当前有 {len(unreviewed_signals)} 条待审核策略信号：{symbols}，"
+        "请在「策略信号」页面确认。"
+    )
 
 
 def generate_daily_tasks(conn, settings: dict[str, Any], task_date: str) -> list[TaskItem]:
@@ -195,7 +209,7 @@ def generate_daily_tasks(conn, settings: dict[str, Any], task_date: str) -> list
                 category=TASK_CATEGORY_REVIEW,
                 task_type=TASK_REVIEW_STRATEGY_SIGNAL,
                 title="审核策略信号",
-                description=f"当前有 {len(unreviewed_signals)} 条待审核策略信号，请在「策略信号」页面确认。",
+                description=_format_unreviewed_signal_description(unreviewed_signals),
                 priority=TASK_PRIORITY_NORMAL,
                 source_type="strategy_signal",
                 source_key="generated",
@@ -206,7 +220,8 @@ def generate_daily_tasks(conn, settings: dict[str, Any], task_date: str) -> list
     actionable_signals = [
         signal
         for signal in unreviewed_signals
-        if signal.get("action") in {"buy", "hold", "adjust"}
+        if signal.get("signal_date") == task_date
+        and signal.get("action") in ACTIONABLE_SIGNAL_ACTIONS
     ]
     trade_rows = get_trade_logs(conn, start_date=task_date, end_date=task_date)
     if actionable_signals and not trade_rows:
@@ -431,26 +446,6 @@ def generate_risk_tasks(conn, settings: dict[str, Any], task_date: str) -> list[
                         due_date=task_date,
                     )
                 )
-
-    unreviewed_signals = [
-        dict(row)
-        for row in get_latest_strategy_signals(conn)
-        if row["review_status"] == "generated"
-    ]
-    for signal in unreviewed_signals:
-        tasks.append(
-            TaskItem(
-                task_date=task_date,
-                category=TASK_CATEGORY_RISK,
-                task_type=TASK_UNREVIEWED_SIGNAL,
-                title=f"待审核信号：{signal['symbol']}",
-                description=f"{signal['symbol']} 的策略信号尚未审核，请在「策略信号」页面处理。",
-                priority=TASK_PRIORITY_NORMAL,
-                source_type="strategy_signal",
-                source_key=str(signal["id"]),
-                due_date=task_date,
-            )
-        )
 
     week_start, week_end = _rolling_week(task_date)
     trade_rows = get_trade_logs(conn, start_date=week_start, end_date=week_end)

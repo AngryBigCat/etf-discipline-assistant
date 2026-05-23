@@ -19,8 +19,10 @@ from src.db.repository import (
 from src.db.schema import init_schema
 from src.tasks.generators import generate_all_tasks, generate_daily_tasks, generate_weekly_tasks
 from src.tasks.rules import ALL_TASK_TYPES, TASK_GENERATE_AI_DAILY_REVIEW, TASK_INPUT_HOLDING_SNAPSHOT
-from src.tasks.rules import TASK_REVIEW_STRATEGY_SIGNAL, TASK_UPDATE_MARKET_DATA
+from src.tasks.rules import TASK_RECORD_TRADE_LOG, TASK_REVIEW_STRATEGY_SIGNAL, TASK_UNREVIEWED_SIGNAL
+from src.tasks.rules import TASK_UPDATE_MARKET_DATA
 from src.tasks.rules import TASK_GENERATE_WEEKLY_REPORT, TASK_EXCEED_MAX_POSITION
+from src.strategy.rule_engine import ACTION_STRONG_BUY
 from src.tasks.service import refresh_tasks_for_date
 from src.ui.labels import (
     TASK_TYPE_LABELS,
@@ -145,7 +147,56 @@ def test_generate_review_signal_task_when_unreviewed(memory_conn, settings):
                 "anti_chase_score": 20,
                 "position_score": 20,
                 "special_score": 0,
-                "action": "buy",
+                "action": ACTION_STRONG_BUY,
+                "suggested_amount": 3000,
+                "reason": "test",
+                "confidence_level": "normal",
+                "review_status": "generated",
+            },
+            {
+                "signal_date": "2026-05-23",
+                "symbol": "DIVIDEND",
+                "final_score": 70,
+                "trend_score": 20,
+                "drawdown_score": 20,
+                "volatility_score": 0,
+                "anti_chase_score": 10,
+                "position_score": 20,
+                "special_score": 0,
+                "action": "hold",
+                "suggested_amount": 0,
+                "reason": "test",
+                "confidence_level": "normal",
+                "review_status": "generated",
+            },
+        ],
+    )
+    tasks = generate_all_tasks(memory_conn, settings, "2026-05-23")
+    review_tasks = [task for task in tasks if task.task_type == TASK_REVIEW_STRATEGY_SIGNAL]
+    assert len(review_tasks) == 1
+    assert "A500、DIVIDEND" in review_tasks[0].description
+    assert "2 条待审核策略信号" in review_tasks[0].description
+    assert not any(task.task_type == TASK_UNREVIEWED_SIGNAL for task in tasks)
+
+
+def test_generate_record_trade_log_for_actionable_signal(memory_conn, settings):
+    _seed_universe(memory_conn, settings)
+    _seed_prices(memory_conn, "A500", "2026-05-23")
+    _seed_snapshot(memory_conn, "2026-05-23")
+    upsert_strategy_signals(
+        memory_conn,
+        [
+            {
+                "signal_date": "2026-05-23",
+                "symbol": "A500",
+                "final_score": 80,
+                "trend_score": 20,
+                "drawdown_score": 20,
+                "volatility_score": 0,
+                "anti_chase_score": 20,
+                "position_score": 20,
+                "special_score": 0,
+                "action": ACTION_STRONG_BUY,
                 "suggested_amount": 3000,
                 "reason": "test",
                 "confidence_level": "normal",
@@ -154,7 +205,36 @@ def test_generate_review_signal_task_when_unreviewed(memory_conn, settings):
         ],
     )
     tasks = generate_daily_tasks(memory_conn, settings, "2026-05-23")
-    assert any(task.task_type == TASK_REVIEW_STRATEGY_SIGNAL for task in tasks)
+    assert any(task.task_type == TASK_RECORD_TRADE_LOG for task in tasks)
+
+
+def test_record_trade_log_not_generated_for_non_actionable_signal(memory_conn, settings):
+    _seed_universe(memory_conn, settings)
+    _seed_prices(memory_conn, "A500", "2026-05-23")
+    _seed_snapshot(memory_conn, "2026-05-23")
+    upsert_strategy_signals(
+        memory_conn,
+        [
+            {
+                "signal_date": "2026-05-23",
+                "symbol": "A500",
+                "final_score": 40,
+                "trend_score": 10,
+                "drawdown_score": 10,
+                "volatility_score": 0,
+                "anti_chase_score": 10,
+                "position_score": 10,
+                "special_score": 0,
+                "action": "hold",
+                "suggested_amount": 0,
+                "reason": "test",
+                "confidence_level": "normal",
+                "review_status": "generated",
+            }
+        ],
+    )
+    tasks = generate_daily_tasks(memory_conn, settings, "2026-05-23")
+    assert not any(task.task_type == TASK_RECORD_TRADE_LOG for task in tasks)
 
 
 def test_generate_ai_daily_review_when_report_exists(memory_conn, settings):
