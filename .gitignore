@@ -7,5 +7,6 @@ __pycache__/
 .mypy_cache/
 .env
 data/*.db
+backups/
 .DS_Store
 .streamlit/secrets.toml
