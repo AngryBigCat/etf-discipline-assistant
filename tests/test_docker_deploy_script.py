@@ -31,3 +31,10 @@ def test_deploy_script_supports_skip_flags() -> None:
 
     assert "--skip-build" in script
     assert "--skip-init" in script
+
+
+def test_deploy_script_does_not_prune_images() -> None:
+    script = (ROOT / "scripts" / "deploy_docker.sh").read_text(encoding="utf-8")
+
+    assert "docker image rm" not in script
+    assert "docker image prune" not in script

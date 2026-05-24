@@ -2,9 +2,6 @@ name: etf-discipline-assistant
 
 x-etf-common: &etf-common
   image: etf-discipline-assistant:latest
-  build:
-    context: .
-    dockerfile: Dockerfile
   env_file:
     - .env
   environment:
@@ -22,6 +19,9 @@ services:
   etf-init:
     <<: *etf-common
     container_name: etf-init
+    build:
+      context: .
+      dockerfile: Dockerfile
     command:
       - sh
       - -c
