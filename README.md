@@ -71,6 +71,7 @@ python scripts/run_portfolio_backtest.py --start 2021-01-01 --end 2026-05-23 --c
 若补全失败并提示系统代理（如 `127.0.0.1:7890`），请确认 Clash/V2Ray 等代理软件已启动；国内网络也可尝试关闭 Windows「使用代理服务器」后重试。
 
 Linux 服务器部署（Streamlit + 独立 Scheduler 进程）见 [`docs/deployment-linux.md`](docs/deployment-linux.md)。
+Docker Compose 部署（`etf-web` + `etf-scheduler` + 一次性 `etf-init`）见 [`docs/deployment-docker.md`](docs/deployment-docker.md)。
 
 ## 配置说明
 

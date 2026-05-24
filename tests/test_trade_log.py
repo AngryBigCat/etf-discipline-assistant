@@ -176,7 +176,14 @@ def test_ignore_signal_writes_trade_log(memory_conn, settings):
 
 def test_trade_summary_counts(memory_conn, settings):
     signal = _seed_signal(memory_conn, settings)
-    create_buy_from_signal(memory_conn, signal, amount=3000, price=1.0, quantity=3000)
+    create_buy_from_signal(
+        memory_conn,
+        signal,
+        trade_date="2026-05-23",
+        amount=3000,
+        price=1.0,
+        quantity=3000,
+    )
     create_manual_trade(
         memory_conn,
         TradeLogInput(

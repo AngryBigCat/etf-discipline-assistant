@@ -1,6 +1,6 @@
 # Linux 部署说明
 
-本文说明如何在 Linux 服务器上分别运行 Streamlit 前端与定时任务 Worker。
+本文说明如何在 Linux 服务器上分别运行 Streamlit 前端与定时任务 Worker。Docker Compose 部署见 [`deployment-docker.md`](deployment-docker.md)。
 
 ## 前置条件
 

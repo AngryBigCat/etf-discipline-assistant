@@ -1,0 +1,62 @@
+name: etf-discipline-assistant
+
+x-etf-common: &etf-common
+  image: etf-discipline-assistant:latest
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - .env
+  environment:
+    PYTHONPATH: /app
+    TZ: ${TZ:-Asia/Shanghai}
+    DATABASE_PATH: ${DATABASE_PATH:-data/etf_assistant.db}
+    CONFIG_PATH: ${CONFIG_PATH:-config/app.yaml}
+  volumes:
+    - ./config:/app/config
+    - ./data:/app/data
+    - ./backups:/app/backups
+    - ./logs:/app/logs
+
+services:
+  etf-init:
+    <<: *etf-common
+    container_name: etf-init
+    command:
+      - sh
+      - -c
+      - python scripts/init_db.py && python scripts/sync_assets_from_seed.py
+    restart: "no"
+
+  etf-web:
+    <<: *etf-common
+    container_name: etf-web
+    command:
+      - streamlit
+      - run
+      - app.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+    ports:
+      - "8501:8501"
+    depends_on:
+      etf-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  etf-scheduler:
+    <<: *etf-common
+    container_name: etf-scheduler
+    command:
+      - python
+      - scripts/scheduler_worker.py
+    depends_on:
+      etf-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
